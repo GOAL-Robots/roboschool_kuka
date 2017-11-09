@@ -52,6 +52,7 @@ class  Box2DSim(object):
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 class TestPlotter:
 
     def __init__(self, sim):
@@ -79,16 +80,55 @@ class TestPlotter:
             data = np.vstack([ body.GetWorldPoint(vercs[x]) 
                 for x in range(len(vercs))])
             body_plot.set_data(*data.T)
-                            
-        self.fig.canvas.draw()
+
+import matplotlib.animation as animation
+
+class InlineTestPlotter:
+
+    def __init__(self, sim):
+
+        self.sim = sim
         
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111, aspect="equal")
+        self.plots = dict()
+        self.jointPlots = dict()
+        for key in self.sim.bodies.keys() :
+            self.plots[key], = self.ax.plot(0,0, color=[0,0,0])
+        for key in self.sim.joints.keys() :
+            self.jointPlots[key], = self.ax.plot(0,0, lw=4, color=[1,0,0])       
+        self.ax.set_xlim([0,30])
+        self.ax.set_ylim([0,30])
+
+
+def step(plotter) :
+       
+    for key, body_plot in plotter.plots.items():
+        body = plotter.sim.bodies[key]
+        vercs = np.vstack(body.fixtures[0].shape.vertices)
+        vercs = vercs[ np.hstack([np.arange(len(vercs)), 0]) ]
+        data = np.vstack([ body.GetWorldPoint(vercs[x]) 
+            for x in range(len(vercs))])
+        body_plot.set_data(*data.T)
+        
+    return plotter.plots
+
+def makeVideo(fig, plotter, frames=1000):
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+    ani = animation.FuncAnimation(fig, func=step, frames=frames,
+                                  fargs=(plotter,), interval=50, blit=True)
+    ani.save('sim.mp4', writer=writer)
+             
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------ 
 
 if __name__ == "__main__":
     
     sim = Box2DSim("body2d.json")
+    inline_sim = Box2DSim("body2d.json")
     plotter = TestPlotter(sim)
+    plotter2 = InlineTestPlotter(inline_sim)
     
     plt.ion()
 
@@ -102,5 +142,6 @@ if __name__ == "__main__":
 
         sim.step()
         plotter.step()
-        plt.pause(0.01)
+        plt.pause(0.001)
    
+    
