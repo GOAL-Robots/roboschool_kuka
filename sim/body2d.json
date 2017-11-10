@@ -1,6 +1,6 @@
 {
     "gravity": {
-        "y": -9, 
+        "y": 0, 
         "x": 0
     },
     "autoClearForces": true, 
@@ -135,9 +135,9 @@
         },
         {
             "angle": 0.0, 
-            "name": "Arm4", 
+            "name": "clow1", 
             "position": {
-                "y": 19.0, 
+                "y": 23.0, 
                 "x": 4.0
             }, 
             "type": 2, 
@@ -148,16 +148,86 @@
                     "polygon": {
                         "vertices": {
                             "y": [
-                                3.0, 
-                                3.0, 
-                                -3.0, 
-                                -3.0
+                                2.5, 
+                                2.5, 
+                                0.0,
+                                0,0,
+                                -2.5, 
+                                -2.5
                             ], 
                             "x": [
-                                -0.5, 
-                                0.5, 
-                                0.5, 
-                                -0.5
+                                -0.1, 
+                                0.1, 
+                                1.5,
+                                1.5,
+                                0.1, 
+                                -0.1
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "angle": 0.0, 
+            "name": "clow2", 
+            "position": {
+                "y": 23.0, 
+                "x": 4.0
+            }, 
+            "type": 2, 
+            "fixture": [
+                {
+                    "name": "",
+                    "density": 1, 
+                    "polygon": {
+                        "vertices": {
+                            "y": [
+                                2.5, 
+                                2.5, 
+                                0.0,
+                                0,0,
+                                -2.5, 
+                                -2.5
+                            ], 
+                            "x": [
+                                -0.1, 
+                                0.1, 
+                                -1.5,
+                                -1.5,
+                                0.1, 
+                                -0.1
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "angle": 0.0, 
+            "name": "Object", 
+            "position": {
+                "y": 15.0, 
+                "x": 9.0
+            }, 
+            "type": 2, 
+            "fixture": [
+                {
+                    "name": "",
+                    "density": 1, 
+                    "polygon": {
+                        "vertices": {
+                            "y": [
+                                1.0, 
+                                1.0, 
+                                -1.0, 
+                                -1.0
+                            ], 
+                            "x": [
+                                -1.0, 
+                                1.0, 
+                                1.0, 
+                                -1.0
                             ]
                         }
                     }
@@ -212,7 +282,52 @@
             "lowerLimit": -3.14,             
             "enableMotor": true 
         },
-
+        {
+            "name": "Arm3_to_Clow1", 
+            "type": "revolute",             
+            "bodyA": 3, 
+            "bodyB": 4, 
+            "jointSpeed": 0, 
+            "refAngle": 0, 
+            "collideConnected": false, 
+            "maxMotorTorque": 10000, 
+            "enableLimit": true, 
+            "motorSpeed": 0, 
+            "anchorA": {
+                "y": 3.0, 
+                "x": 0.0
+            }, 
+            "anchorB": {
+                "y": -2.5, 
+                "x": 0.0
+            }, 
+            "upperLimit": 3.14, 
+            "lowerLimit": -3.14,             
+            "enableMotor": true 
+        },
+        {
+            "name": "Arm3_to_Clow2", 
+            "type": "revolute",             
+            "bodyA": 3, 
+            "bodyB": 5, 
+            "jointSpeed": 0, 
+            "refAngle": 0, 
+            "collideConnected": false, 
+            "maxMotorTorque": 10000, 
+            "enableLimit": true, 
+            "motorSpeed": 0, 
+            "anchorA": {
+                "y": 3.0, 
+                "x": 0.0
+            }, 
+            "anchorB": {
+                "y": -2.5, 
+                "x": 0.0
+            }, 
+            "upperLimit": 3.14, 
+            "lowerLimit": -3.14,             
+            "enableMotor": true 
+        },
         {
             "name": "Ground_to_Arm1", 
             "type": "revolute",             

@@ -1,5 +1,6 @@
 import JsonToPyBox2D as json2d
 from PID import PID
+import sys
 
 #------------------------------------------------------------------------------ 
 #------------------------------------------------------------------------------ 
@@ -54,11 +55,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class TestPlotter:
+    """ Plotter of simulations
+    Builds a simple matplotlib graphic environment 
+    and run single steps of the simulation within it
+     
+    """
 
     def __init__(self, sim):
+        """
+            :param sim: a simulator object
+            :type sim: Box2DSim
+        """
 
         self.sim = sim
-        
+
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, aspect="equal")
         self.plots = dict()
@@ -72,7 +82,9 @@ class TestPlotter:
 
 
     def step(self) :
-       
+        """ Run a single simulator step
+        """
+               
         for key, body_plot in self.plots.items():
             body = self.sim.bodies[key]
             vercs = np.vstack(body.fixtures[0].shape.vertices)
@@ -81,14 +93,28 @@ class TestPlotter:
                 for x in range(len(vercs))])
             body_plot.set_data(*data.T)
 
+#------------------------------------------------------------------------------ 
+
 import matplotlib.animation as animation
 
 class InlineTestPlotter:
-
-    def __init__(self, sim):
-
-        self.sim = sim
+    """ Plotter of inline simulations
+    Builds a simple matplotlib graphic environment 
+    and run the wjole simulation to produece a video
+     
+    """
+    def __init__(self, sim, sim_step):
+        """
+            :param sim: a simulator object
+            :type sim: Box2DSim
+            
+            :param sim_step: a function defining a single step of simulation
+            :type sim_step: callable object
+        """
         
+        self.sim = sim
+        self.sim_step = sim_step
+ 
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, aspect="equal")
         self.plots = dict()
@@ -101,47 +127,69 @@ class InlineTestPlotter:
         self.ax.set_ylim([0,30])
 
 
-def step(plotter) :
-       
-    for key, body_plot in plotter.plots.items():
-        body = plotter.sim.bodies[key]
-        vercs = np.vstack(body.fixtures[0].shape.vertices)
-        vercs = vercs[ np.hstack([np.arange(len(vercs)), 0]) ]
-        data = np.vstack([ body.GetWorldPoint(vercs[x]) 
-            for x in range(len(vercs))])
-        body_plot.set_data(*data.T)
+    def step(self) :
+        """
+        runs a single step of the simulation
+        and plots it into a matplotlib figure
+        """
         
-    return plotter.plots
+        self.sim_step(self.sim)
+ 
+        for key, body_plot in self.plots.items():
+            body = self.sim.bodies[key]
+            vercs = np.vstack(body.fixtures[0].shape.vertices)
+            vercs = vercs[ np.hstack([np.arange(len(vercs)), 0]) ]
+            data = np.vstack([ body.GetWorldPoint(vercs[x]) 
+                for x in range(len(vercs))])
+            body_plot.set_data(*data.T)
+            
+        return tuple([self.fig] + self.plots.values())
+    
+    def makeVideo(self, frames=2000):
 
-def makeVideo(fig, plotter, frames=1000):
-    Writer = animation.writers['ffmpeg']
-    writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-    ani = animation.FuncAnimation(fig, func=step, frames=frames,
-                                  fargs=(plotter,), interval=50, blit=True)
-    ani.save('sim.mp4', writer=writer)
-             
+        def ani_step(frame): return self.step()
+        self.ani = animation.FuncAnimation(self.fig, func=ani_step, 
+                                      frames=frames, interval=20,
+                                      blit=True)
+        
+        
+        return self.ani
+    
+    def save(self, filename="sim"):
+        Writer = animation.writers['ffmpeg']
+        writer = Writer(fps=15, codec="h264", metadata=dict(artist='Me'), bitrate=1800)       
+        self.ani.save('%s.avi' % filename, writer=writer)
+      
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------ 
 
 if __name__ == "__main__":
     
-    sim = Box2DSim("body2d.json")
-    inline_sim = Box2DSim("body2d.json")
-    plotter = TestPlotter(sim)
-    plotter2 = InlineTestPlotter(inline_sim)
-    
+    is_inline = True
     plt.ion()
-
-    for t in range(1000):
-        
-#------------------------------------------------------------------------------ 
-
-        sim.move("Arm1_to_Arm2", -np.pi/2.)
-        
-#------------------------------------------------------------------------------ 
-
-        sim.step()
-        plotter.step()
-        plt.pause(0.001)
-   
     
+    if is_inline == True:
+        inline_sim = Box2DSim("body2d.json")
+         
+        def step(sim):
+            sim.move("Arm1_to_Arm2", -np.pi/2.)
+            sim.step()
+             
+        plotter = InlineTestPlotter(inline_sim, sim_step=step)
+        plotter.makeVideo()
+        plotter.save()
+     
+    elif is_inline == False:
+        inline_sim = Box2DSim("body2d.json")
+         
+        def step(sim):
+            sim.move("Arm1_to_Arm2", -np.pi/2.)
+            sim.step()
+             
+        plotter = InlineTestPlotter(inline_sim, sim_step=step)
+        for t in range(1000):
+            plotter.step()
+            plt.pause(0.00001)
+
+
+   
