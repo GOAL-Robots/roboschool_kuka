@@ -36,6 +36,15 @@ class  Box2DSim(object):
         self.joint_pids = { ("%s" % k): PID(dt=self.dt) 
                 for k in self.joints.keys() }
 
+    def contacts(self, bodyA, bodyB):
+        
+        contacts = 0
+        for ce in self.bodies[bodyA].contacts:
+            if ce.contact.fixtureB.body  == self.bodies[bodyB]:
+                contacts += 1
+                
+        return contacts
+    
     def move(self, joint_name, angle):
         pid = self.joint_pids[joint_name]
         pid.setpoint = angle

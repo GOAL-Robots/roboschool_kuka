@@ -135,7 +135,7 @@
         },
         {
             "angle": 0.0, 
-            "name": "clow10", 
+            "name": "claw10", 
             "position": {
                 "y": 23.0, 
                 "x": 4.5
@@ -166,7 +166,7 @@
         },
         {
             "angle": 0.0, 
-            "name": "clow20", 
+            "name": "claw20", 
             "position": {
                 "y": 23.0, 
                 "x": 3.5
@@ -197,7 +197,7 @@
         },
         {
             "angle": 0.0, 
-            "name": "clow11", 
+            "name": "claw11", 
             "position": {
                 "y": 24.5, 
                 "x": 4.5
@@ -228,7 +228,7 @@
         },
         {
             "angle": 0.0, 
-            "name": "clow21", 
+            "name": "claw21", 
             "position": {
                 "y": 24.5, 
                 "x": 3.5
@@ -338,7 +338,7 @@
             "enableMotor": true 
         },
         {
-            "name": "Arm3_to_Clow10", 
+            "name": "Arm3_to_Claw10", 
             "type": "revolute",             
             "bodyA": 3, 
             "bodyB": 4, 
@@ -361,7 +361,7 @@
             "enableMotor": true 
         },
         {
-            "name": "Arm3_to_Clow20", 
+            "name": "Arm3_to_Claw20", 
             "type": "revolute",             
             "bodyA": 3, 
             "bodyB": 5, 
@@ -384,7 +384,7 @@
             "enableMotor": true 
         },
         {
-            "name": "Clow10_to_Clow11", 
+            "name": "Claw10_to_Claw11", 
             "type": "revolute",             
             "bodyA": 4, 
             "bodyB": 6, 
@@ -407,7 +407,7 @@
             "enableMotor": true 
         },
         {
-            "name": "Clow20_to_Clow21", 
+            "name": "Claw20_to_Claw21", 
             "type": "revolute",             
             "bodyA": 5, 
             "bodyB": 7, 
