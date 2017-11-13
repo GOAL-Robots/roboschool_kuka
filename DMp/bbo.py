@@ -6,22 +6,17 @@ def softmax(x, lmb):
     e = np.exp(-x/lmb)
     return e/sum(e)
 
+
 class BBO :
     "P^2BB: Policy Improvement through Black Vox Optimization"
     def __init__(self, num_params, num_rollouts, sigma, lmb,  epochs, rollout_func):
         '''
-        :param num_params: number of parameters to optimize 
-        :type num_params: Integer
-        :param num_rollouts: number of rollouts per iteration
-        :type num_rollouts: Integer
-        :param sigma: amount of exploration around the mean of parameters
-        :type sigma:
-        :param lmb:
-        :type lmb:
-        :param epochs:
-        :type epochs:
-        :param rollout_func:
-        :type rollout_func:
+        :param num_params: Integer. Number of parameters to optimize 
+        :param num_rollouts: Integer. number of rollouts per iteration
+        :param sigma: Float. Amount of exploration around the mean of parameters
+        :param lmb: Float. Temperature of the evaluation softmax
+        :param epochs: Integer. Number of iterations
+        :param rollout_func: Callable object to produce a rollout
         '''
         
         self.sigma = sigma
@@ -36,11 +31,17 @@ class BBO :
         self.epoch = 0
                
     def sample(self):
+        """ Get num_rollouts samples from the current parameters mean
+        """
         self.eps = np.random.multivariate_normal(
             np.zeros(self.num_params), 
             self.Cov * self.sigma, num_rollouts)
     
     def update(self, Sk):
+        ''' Update parameters
+        
+            :param Sk: array(Float) 
+        '''
         probs = softmax(Sk, self.lmb).reshape(num_rollouts, 1)
         self.theta += np.sum(self.eps * probs, 0)
     
