@@ -7,11 +7,26 @@ def softmax(x, lmb):
     return e/sum(e)
 
 class BBO :
-    
-    def __init__(self, num_params, sigma, lmb, K, epochs, rollout_func):
+    "P^2BB: Policy Improvement through Black Vox Optimization"
+    def __init__(self, num_params, num_rollouts, sigma, lmb,  epochs, rollout_func):
+        '''
+        :param num_params: number of parameters to optimize 
+        :type num_params: Integer
+        :param num_rollouts: number of rollouts per iteration
+        :type num_rollouts: Integer
+        :param sigma: amount of exploration around the mean of parameters
+        :type sigma:
+        :param lmb:
+        :type lmb:
+        :param epochs:
+        :type epochs:
+        :param rollout_func:
+        :type rollout_func:
+        '''
+        
         self.sigma = sigma
         self.lmb = lmb
-        self.K = K
+        num_rollouts = num_rollouts
         self.num_params = num_params
         self.theta = np.zeros(num_params)
         self.Cov = np.eye(num_params, num_params)
@@ -21,40 +36,31 @@ class BBO :
         self.epoch = 0
                
     def sample(self):
-        decay = 1.0 + 0*np.exp(-self.epoch/float(self.epochs*.3))
         self.eps = np.random.multivariate_normal(
             np.zeros(self.num_params), 
-            self.Cov * self.sigma * decay, self.K)
+            self.Cov * self.sigma, num_rollouts)
     
     def update(self, Sk):
-        probs = softmax(Sk, self.lmb).reshape(self.K, 1)
+        probs = softmax(Sk, self.lmb).reshape(num_rollouts, 1)
         self.theta += np.sum(self.eps * probs, 0)
     
     def eval(self, costs):    
-         
         errs = costs**2
         self.err = np.min(np.mean(errs,1))
-        
-        Sk = np.zeros(self.K)
-        
-        for k in range(self.K):
-            
+        Sk = np.zeros(num_rollouts)
+        for k in range(num_rollouts):
             Sk[k] = errs[k, -1]
-            
             Sk[k] += np.sum( 
                 errs[k, j:].sum() 
                 for j in range(self.num_params)) 
-                    
-            Sk[k] += 0.5 * self.sigma * (self.theta + self.eps[k]).dot(
-                                self.theta + self.eps[k]) 
+            thetak = self.theta + self.eps[k]
+            Sk[k] += 0.5 * self.sigma * (thetak).dot(thetak) 
+        
         return Sk
         
-    def iteration(self, test = False):
+    def iteration(self, explore = True):
         self.sample()
-        if test == False:
-            costs, rollouts = self.rollout_func(self.theta + self.eps)    
-        elif test == True:
-            costs, rollouts = self.rollout_func(self.theta + 0*self.eps)
+        costs, rollouts = self.rollout_func(self.theta + explore*self.eps)    
         Sk = self.eval(costs)
         self.update(Sk)
         self.epoch += 1
@@ -111,7 +117,7 @@ if __name__ == "__main__":
         ax.relim()
         ax.autoscale_view()
         plt.pause(0.001)
-    rollouts,_ = bbo.iteration(test=True)
+    rollouts,_ = bbo.iteration(explore=False)
     
     fig2 = plt.figure()
     plt.plot(target, lw=2, color="red")
