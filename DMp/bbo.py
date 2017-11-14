@@ -9,7 +9,9 @@ def softmax(x, lmb):
 
 class BBO :
     "P^2BB: Policy Improvement through Black Vox Optimization"
-    def __init__(self, num_params, num_rollouts, sigma, lmb,  epochs, rollout_func):
+    def __init__(self, rollout_func, num_params=10, num_rollouts=20, 
+                 sigma=0.001, lmb=0.1, epochs=100, 
+                 sigma_decay_amp=0, sigma_decay_period=0.1):
         '''
         :param num_params: Integer. Number of parameters to optimize 
         :param num_rollouts: Integer. number of rollouts per iteration
@@ -20,6 +22,9 @@ class BBO :
             signature: (thetas - num_rollouts X num_params ) ->
                 (errs -  num_rollouts X num_timesteps,
                  rollouts -  num_rollouts X num_timesteps)
+        :param sigma_decay_amp: Initial additive amplitude of exploration
+        :param sigma_decay_period: Decaying period of additive 
+            amplitude of exploration
         '''
         
         self.sigma = sigma
@@ -31,15 +36,20 @@ class BBO :
         self.rollout_func = rollout_func
         self.err = 1.0
         self.epochs = epochs
+        self.decay_amp = sigma_decay_amp
+        self.decay_period = sigma_decay_period
         self.epoch = 0
                
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
         """
+        
+        Sigma = self.sigma + self.decay_amp*np.exp(
+            -self.epoch/(self.epochs * self.decay_period))
         # matrix of deviations from the parameters mean
         self.eps = np.random.multivariate_normal(
             np.zeros(self.num_params), 
-            self.Cov * self.sigma, self.num_rollouts)
+            self.Cov * Sigma, self.num_rollouts)
     
     def update(self, Sk):
         ''' Update parameters
@@ -91,16 +101,16 @@ class BBO :
 if __name__ == "__main__":
     
     K = 50
-    n = 10
+    n = 8
     s = 0
     g = 1
-    stime = 200
-    dt = 0.1
+    stime = 50
+    dt = 0.05
     sigma = 0.1
     
-    bbo_sigma = 0.01
-    bbo_lmb = 1.0
-    epochs = 50
+    bbo_sigma = 0.001
+    bbo_lmb = 0.9
+    epochs = 200
 
     # create dmps    
     dmps = [ DMP(n, s, g, stime, dt, sigma) 
@@ -128,7 +138,7 @@ if __name__ == "__main__":
         return np.vstack(errs), np.vstack(rollouts)
     
     # the BBO object
-    bbo = BBO(n, K, bbo_sigma, bbo_lmb, epochs, rollouts)
+    bbo = BBO(rollouts, n, K, bbo_sigma, bbo_lmb, epochs, 0.05, 0.1)
     
     costs = np.zeros(epochs)
     fig = plt.figure()
