@@ -21,7 +21,7 @@ class BBO :
         
         self.sigma = sigma
         self.lmb = lmb
-        num_rollouts = num_rollouts
+        self.num_rollouts = num_rollouts
         self.num_params = num_params
         self.theta = np.zeros(num_params)
         self.Cov = np.eye(num_params, num_params)
@@ -35,31 +35,47 @@ class BBO :
         """
         self.eps = np.random.multivariate_normal(
             np.zeros(self.num_params), 
-            self.Cov * self.sigma, num_rollouts)
+            self.Cov * self.sigma, self.num_rollouts)
     
     def update(self, Sk):
         ''' Update parameters
         
             :param Sk: array(Float) 
         '''
-        probs = softmax(Sk, self.lmb).reshape(num_rollouts, 1)
+        probs = softmax(Sk, self.lmb).reshape(self.num_rollouts, 1)
         self.theta += np.sum(self.eps * probs, 0)
     
-    def eval(self, costs):    
+    def eval(self, costs):   
+        ''' Evaluate rollouts parameters
+            :param costs: array(Float). A matrix of 
+                num_rollouts X num_timesteps errors between 
+                rollouts and the target trajectory at each timestep  
+            :return: array(Float). A num_rollouts vector with 
+                the global cost for each rollout
+        ''' 
         errs = costs**2
+        #store the mean square error
         self.err = np.min(np.mean(errs,1))
-        Sk = np.zeros(num_rollouts)
-        for k in range(num_rollouts):
+        # compute values for each rollout
+        Sk = np.zeros(self.num_rollouts)
+        for k in range(self.num_rollouts):
+            # cost a t the final timestep
             Sk[k] = errs[k, -1]
+            # cost-to-go integral
             Sk[k] += np.sum( 
                 errs[k, j:].sum() 
                 for j in range(self.num_params)) 
+            # regularization
             thetak = self.theta + self.eps[k]
             Sk[k] += 0.5 * self.sigma * (thetak).dot(thetak) 
         
         return Sk
         
     def iteration(self, explore = True):
+        """ Run a single iteration of the BBO
+            :param explore: Bool. True if samples are stochastic (training)
+                False if we ask deterministic rollouts to test the parameters
+        """
         self.sample()
         costs, rollouts = self.rollout_func(self.theta + explore*self.eps)    
         Sk = self.eval(costs)
@@ -67,13 +83,15 @@ class BBO :
         self.epoch += 1
         return rollouts, Sk
     
+#------------------------------------------------------------------------------ 
+
 if __name__ == "__main__":
     
     K = 50
     n = 10
     s = 0
     g = 1
-    stime = 200
+    stime = 50
     dt = 0.1
     sigma = 0.1
     
@@ -81,8 +99,7 @@ if __name__ == "__main__":
     bbo_lmb = 1.0
     epochs = 50
     
-    dmps = [ DMP(n, s, g, stime, dt, sigma) 
-                    for k in range(K) ]
+    dmps =[ DMP(n, s, g, stime, dt, sigma) for k in range(K)]
     
     x = np.linspace(0, 3*np.pi, stime)
     target = np.sin(x) + x
@@ -105,7 +122,7 @@ if __name__ == "__main__":
         
         return np.vstack(errs), np.vstack(rollouts)
                            
-    bbo = BBO(n, bbo_sigma, bbo_lmb, K, epochs, rollouts)
+    bbo = BBO(n, K, bbo_sigma, bbo_lmb, epochs, rollouts)
     
     costs = np.zeros(epochs)
     fig = plt.figure()
