@@ -9,19 +9,21 @@ def softmax(x, lmb):
 
 class BBO :
     "P^2BB: Policy Improvement through Black Vox Optimization"
-    def __init__(self, rollout_func, num_params=10, num_rollouts=20, 
+    def __init__(self, rollout_func, num_params=10, num_rollouts=20, num_dmps=1,
                  sigma=0.001, lmb=0.1, epochs=100, 
                  sigma_decay_amp=0, sigma_decay_period=0.1):
         '''
         :param num_params: Integer. Number of parameters to optimize 
         :param num_rollouts: Integer. number of rollouts per iteration
+        :param num_dmps: number of dmps
         :param sigma: Float. Amount of exploration around the mean of parameters
         :param lmb: Float. Temperature of the evaluation softmax
         :param epochs: Integer. Number of iterations
         :param rollout_func: Callable object to produce a rollout
-            signature: (thetas - num_rollouts X num_params ) ->
-                (errs -  num_rollouts X num_timesteps,
-                 rollouts -  num_rollouts X num_timesteps)
+            signature: thetas (errs, rollouts)
+                thetas := array(num_rollouts X num_params/num_dmps)
+                errs := list(array(num_rollouts, stime))
+                rollouts := list(array(num_rollouts, stime))
         :param sigma_decay_amp: Initial additive amplitude of exploration
         :param sigma_decay_period: Decaying period of additive 
             amplitude of exploration
@@ -30,17 +32,18 @@ class BBO :
         self.sigma = sigma
         self.lmb = lmb
         self.num_rollouts = num_rollouts
-        self.num_params = num_params + 1 
+        self.num_dmps = num_dmps
+        self.num_params = int(self.num_dmps*num_params + self.num_dmps)
         self.theta = np.zeros(self.num_params)
-        self.theta[-1] = 1
+        self.theta[-self.num_dmps:] = 1
         self.Cov = np.eye(self.num_params, self.num_params)
         self.rollout_func = rollout_func
-        self.err = 1.0
         self.epochs = epochs
         self.decay_amp = sigma_decay_amp
         self.decay_period = sigma_decay_period
         self.epoch = 0
-               
+        self.err = 1.0
+          
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
         """
@@ -64,8 +67,9 @@ class BBO :
     
     def eval(self, errs):
         """ evaluate rollouts
-            :param errs: tuple(array(float)), Matrices containing DMPs' errors 
-                 at each time-step (columns) of each rollout (rows) 
+            :param errs: list(array(float)), Matrices containing DMPs' errors 
+                 at each timestep (columns) of each rollout (rows) 
+            return: array(float), overall cost of each rollout 
         """
         errs = [err**2 for err in errs]
         self.err = np.mean(np.mean(errs,1)) # store the mean square error
@@ -96,7 +100,7 @@ class BBO :
         """
         self.sample()
         costs, rollouts = self.rollout_func(self.theta + explore*self.eps)    
-        Sk = self.eval([costs])
+        Sk = self.eval(costs)
         self.update(Sk)
         self.epoch += 1
         return rollouts, Sk
@@ -105,24 +109,29 @@ class BBO :
 
 if __name__ == "__main__":
     
-    K = 20
-    n = 10
-    s = 0
-    g = 1
-    stime = 50
-    dt = 0.1
-    sigma = 0.01
+    dmp_num_theta = 10
+    dmp_s = 0
+    dmp_g = 1
+    dmp_stime = 50
+    dmp_dt = 0.1
+    dmp_sigma = 0.01
     
     bbo_sigma = 3e-4
     bbo_lmb = 0.2
-    epochs = 100
+    bbo_epochs = 100
+    bbo_K = 20
+    bbo_num_dmps = 1
 
-    # create dmps    
-    dmps = [ DMP(n, s, g, stime, dt, sigma) 
-                    for k in range(K) ]
-    
+    # create dmps  
+    dmps = []
+    for x in range(bbo_num_dmps):
+        dmps.append([DMP( n=dmp_num_theta, s=dmp_s, 
+                          g=dmp_g, stime=dmp_stime, 
+                          dt=dmp_dt, sigma=dmp_sigma) 
+                     for k in range(bbo_K)])
+      
     # target trajectory
-    x = np.linspace(0, 3*np.pi, stime)
+    x = np.linspace(0, 3*np.pi, dmp_stime)
     target = np.sin(x) + x
     target /= target.max()
 
@@ -132,27 +141,38 @@ if __name__ == "__main__":
         
         rollouts = []
         errs = []
-        for k, theta in enumerate(thetas):
-            dmps[k].reset()
-            thetak = theta.copy()
-            dmps[k].theta = thetak[:-1]
-            dmps[k].set_goal(thetak[-1])
-            dmps[k].rollout()
-            rollout = dmps[k].S["y"]
-            err = (target - rollout)
-            rollouts.append(rollout)
-            errs.append(err)
-        
-        return np.vstack(errs), np.vstack(rollouts)
+                
+        rng = dmp_num_theta + 1 
+        for idx, dmp in enumerate(dmps): 
+            dmp_rollouts = []
+            dmp_errs = []
+            for k, theta in enumerate(thetas):
+                thetak = theta.copy()
+                dmp_theta = thetak[(idx*rng):((idx+1)*rng)] 
+                dmp[k].reset()
+                dmp[k].theta = dmp_theta[:-1]
+                dmp[k].set_goal(dmp_theta[-1])
+                dmp[k].rollout()
+                rollout = dmp[k].S["y"]
+                err = (target - rollout)
+                dmp_rollouts.append(rollout)
+                dmp_errs.append(err)
+            errs.append(np.vstack(dmp_errs))
+            rollouts.append(np.vstack(dmp_rollouts))
+        return errs, rollouts
     
     # the BBO object
-    bbo = BBO(rollouts, n, K, bbo_sigma, bbo_lmb, epochs, 0.0, 0.01)
+    bbo = BBO(rollout_func=rollouts, num_params=dmp_num_theta, 
+              num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
+               sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
+              sigma_decay_amp=0.0, sigma_decay_period=0.01)
     
-    costs = np.zeros(epochs)
+
+    costs = np.zeros(bbo_epochs)
     fig = plt.figure()
     ax = fig.add_subplot(111)
     line, = ax.plot(costs)
-    for t in range(epochs):
+    for t in range(bbo_epochs):
         # iterate -------------
         rs,_ = bbo.iteration()
         # ---------------------
@@ -169,5 +189,5 @@ if __name__ == "__main__":
     fig2 = plt.figure()
     plt.plot(target, lw=2, color="red")
     plt.plot(rs.T, lw=0.2, color="black")
-    plt.plot(rollouts.T, color="green", lw=3)
+    plt.plot(rollouts[0].T, color="green", lw=3)
     plt.show()
