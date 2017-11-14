@@ -67,7 +67,7 @@ class BBO :
                  at each time-step (columns) of each rollout (rows)
         """
         errs = errs**2
-        self.err = np.min(np.mean(errs,1)) # store the mean square error
+        self.err = np.mean(errs) # store the mean square error
         
         # comute costs
         Sk = np.zeros(self.num_rollouts)
@@ -101,16 +101,16 @@ class BBO :
 if __name__ == "__main__":
     
     K = 50
-    n = 8
+    n = 20
     s = 0
     g = 1
     stime = 50
-    dt = 0.05
+    dt = 0.01
     sigma = 0.1
     
-    bbo_sigma = 0.001
-    bbo_lmb = 0.9
-    epochs = 200
+    bbo_sigma = 0.0001
+    bbo_lmb = 0.05
+    epochs = 100
 
     # create dmps    
     dmps = [ DMP(n, s, g, stime, dt, sigma) 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
         return np.vstack(errs), np.vstack(rollouts)
     
     # the BBO object
-    bbo = BBO(rollouts, n, K, bbo_sigma, bbo_lmb, epochs, 0.05, 0.1)
+    bbo = BBO(rollouts, n, K, bbo_sigma, bbo_lmb, epochs, 0.0, 0.2)
     
     costs = np.zeros(epochs)
     fig = plt.figure()

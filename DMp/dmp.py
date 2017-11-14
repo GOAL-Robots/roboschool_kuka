@@ -83,6 +83,14 @@ class DMP :
               "phi": np.zeros([self.n, self.stime])
               }
 
+    def set_start(self, start):
+        # PD params
+        self.y0 = start 
+    
+    def set_goal(self, goal):
+        self.g = goal
+
+
     def get_bases(self, x):
         """
         Computes the bases of a state x
