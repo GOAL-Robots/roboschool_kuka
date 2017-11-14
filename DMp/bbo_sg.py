@@ -188,6 +188,6 @@ if __name__ == "__main__":
     
     fig2 = plt.figure()
     plt.plot(target, lw=2, color="red")
-    plt.plot(rs.T, lw=0.2, color="black")
+    plt.plot(rs[0].T, lw=0.2, color="black")
     plt.plot(rollouts[0].T, color="green", lw=3)
     plt.show()
