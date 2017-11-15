@@ -1,6 +1,8 @@
+import sys
 import numpy as np
 from dmp import DMP
 import matplotlib.pyplot as plt
+
 
 def softmax(x, lmb):
     e = np.exp(-x/lmb)
@@ -9,41 +11,61 @@ def softmax(x, lmb):
 
 class BBO :
     "P^2BB: Policy Improvement through Black Vox Optimization"
-    def __init__(self, rollout_func, num_params=10, num_rollouts=20, num_dmps=1,
+    def __init__(self, num_params=10, 
+                 dmp_stime=100, dmp_dt=0.1, dmp_sigma=0.1,
+                 num_rollouts=20, num_dmps=1,
                  sigma=0.001, lmb=0.1, epochs=100, 
                  sigma_decay_amp=0, sigma_decay_period=0.1):
         '''
         :param num_params: Integer. Number of parameters to optimize 
-        :param num_rollouts: Integer. number of rollouts per iteration
-        :param num_dmps: number of dmps
+        :param n   # create dmps  
+    dmps = []
+    for x in range(bbo_num_dmps):
+        dmps.append([DMP( n=dmp_num_theta, s=dmp_s, 
+                          g=dmp_g, stime=dmp_stime, 
+                          dt=dmp_dt, sigma=dmp_sigma) 
+                     for k in range(bbo_K)])um_rollouts: Integer. number of rollouts per iteration
+        :param num_dmps: Integer, number of dmps
+        :param dmp_stime: Integer, length of the trajectories in timesteps
+        :param dmp_dt: Float, integration step
+        :param dmp_sigma: Float, standard deviation of dmp gaussian basis functions
         :param sigma: Float. Amount of exploration around the mean of parameters
         :param lmb: Float. Temperature of the evaluation softmax
         :param epochs: Integer. Number of iterations
-        :param rollout_func: Callable object to produce a rollout
-            signature: thetas (errs, rollouts)
-                thetas := array(num_rollouts X num_params/num_dmps)
-                errs := list(array(num_rollouts, stime))
-                rollouts := list(array(num_rollouts, stime))
         :param sigma_decay_amp: Initial additive amplitude of exploration
         :param sigma_decay_period: Decaying period of additive 
             amplitude of exploration
         '''
         
+        self.dmp_stime = dmp_stime
+        self.dmp_dt = dmp_dt
+        self.dmp_sigma = dmp_sigma
         self.sigma = sigma
         self.lmb = lmb
         self.num_rollouts = num_rollouts
         self.num_dmps = num_dmps
-        self.num_params = int(self.num_dmps*num_params + self.num_dmps)
+        self.num_dmp_params = num_params
+        self.num_params = int(self.num_dmps*(num_params+2))
         self.theta = np.zeros(self.num_params)
-        self.theta[-self.num_dmps:] = 1
+        goals = np.where((np.arange(
+            self.num_params)%(self.num_dmp_params+2)) ==
+                         self.num_dmp_params + 1)
+        self.theta[goals] = 1
         self.Cov = np.eye(self.num_params, self.num_params)
-        self.rollout_func = rollout_func
         self.epochs = epochs
         self.decay_amp = sigma_decay_amp
         self.decay_period = sigma_decay_period
         self.epoch = 0
         self.err = 1.0
-          
+        
+        # create dmps  
+        self.dmps = []
+        for x in range(self.num_dmps):
+            self.dmps.append([DMP(n=self.num_dmp_params, s=0,
+                          g=1, stime=self.dmp_stime,
+                          dt=self.dmp_dt, sigma=self.dmp_sigma) 
+                     for k in range(self.num_rollouts)])
+           
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
         """
@@ -65,6 +87,36 @@ class BBO :
         # update with the weighted average of sampled parameters
         self.theta += np.sum(self.eps * probs, 0)
     
+    def rollouts(self, thetas):
+        """ Produce a rollout
+            :param thetas: array(num_rollouts X num_params/num_dmps)
+            :return (errs, rollouts) 
+                errs: list(array(num_rollouts, stime))
+                rollouts: list(array(num_rollouts, stime))
+        """   
+        rollouts = []
+        errs = []
+                
+        rng = self.num_dmp_params + 2
+        for idx, dmp in enumerate(self.dmps): 
+            dmp_rollouts = []
+            dmp_errs = []
+            for k, theta in enumerate(thetas):
+                thetak = theta.copy()
+                dmp_theta = thetak[(idx*rng):((idx+1)*rng)] 
+                dmp[k].reset()
+                dmp[k].theta = dmp_theta[:-2]
+                dmp[k].set_start(dmp_theta[-2])
+                dmp[k].set_goal(dmp_theta[-1])
+                dmp[k].rollout()
+                rollout = dmp[k].S["y"]
+                err = (target - rollout)
+                dmp_rollouts.append(rollout)
+                dmp_errs.append(err)
+            errs.append(np.vstack(dmp_errs))
+            rollouts.append(np.vstack(dmp_rollouts))
+        return errs, rollouts
+    
     def eval(self, errs):
         """ evaluate rollouts
             :param errs: list(array(float)), Matrices containing DMPs' errors 
@@ -80,7 +132,7 @@ class BBO :
             Sk[k] = 0
             # final costs
             for err in errs:
-                Sk[k] + err[k,-1]
+                Sk[k] + err[k,-3]
                 for j in range(self.num_params - 2) :
                     # timestep cost 
                     Sk[k] += err[k, j]
@@ -99,7 +151,7 @@ class BBO :
                 or test (False)
         """
         self.sample()
-        costs, rollouts = self.rollout_func(self.theta + explore*self.eps)    
+        costs, rollouts = self.rollouts(self.theta + explore*self.eps)    
         Sk = self.eval(costs)
         self.update(Sk)
         self.epoch += 1
@@ -109,64 +161,29 @@ class BBO :
 
 if __name__ == "__main__":
     
-    dmp_num_theta = 10
-    dmp_s = 0
-    dmp_g = 1
-    dmp_stime = 50
+    dmp_num_theta = 40
+    dmp_stime = 100
     dmp_dt = 0.1
     dmp_sigma = 0.01
     
-    bbo_sigma = 3e-4
+    bbo_sigma = 3e-3
     bbo_lmb = 0.2
     bbo_epochs = 100
     bbo_K = 20
     bbo_num_dmps = 1
 
-    # create dmps  
-    dmps = []
-    for x in range(bbo_num_dmps):
-        dmps.append([DMP( n=dmp_num_theta, s=dmp_s, 
-                          g=dmp_g, stime=dmp_stime, 
-                          dt=dmp_dt, sigma=dmp_sigma) 
-                     for k in range(bbo_K)])
-      
-    # target trajectory
-    x = np.linspace(0, 3*np.pi, dmp_stime)
-    target = np.sin(x) + x
-    target /= target.max()
-
-    
-    # function that call the rollouts within the bbo object
-    def rollouts(thetas):
-        
-        rollouts = []
-        errs = []
-                
-        rng = dmp_num_theta + 1 
-        for idx, dmp in enumerate(dmps): 
-            dmp_rollouts = []
-            dmp_errs = []
-            for k, theta in enumerate(thetas):
-                thetak = theta.copy()
-                dmp_theta = thetak[(idx*rng):((idx+1)*rng)] 
-                dmp[k].reset()
-                dmp[k].theta = dmp_theta[:-1]
-                dmp[k].set_goal(dmp_theta[-1])
-                dmp[k].rollout()
-                rollout = dmp[k].S["y"]
-                err = (target - rollout)
-                dmp_rollouts.append(rollout)
-                dmp_errs.append(err)
-            errs.append(np.vstack(dmp_errs))
-            rollouts.append(np.vstack(dmp_rollouts))
-        return errs, rollouts
-    
     # the BBO object
-    bbo = BBO(rollout_func=rollouts, num_params=dmp_num_theta, 
+    bbo = BBO(num_params=dmp_num_theta, 
+              dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
               num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
                sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
-              sigma_decay_amp=0.0, sigma_decay_period=0.01)
+              sigma_decay_amp=0.05, sigma_decay_period=0.01)
     
+
+    # target trajectory
+    x = np.linspace(0, 6*np.pi, dmp_stime)
+    target = 0.5*(0.5*np.sin(x)+0.5)*(1-(x/(6*np.pi))) + x/(6*np.pi)
+    target /= target.max()
 
     costs = np.zeros(bbo_epochs)
     fig = plt.figure()
