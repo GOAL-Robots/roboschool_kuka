@@ -5,10 +5,8 @@ import matplotlib.pyplot as plt
 np.set_printoptions(precision=3, suppress=True)
 
 def softmax(x, lmb):
-    print x
-    e = np.exp(-x/np.maximum(1e-4, lmb))
-    print e
-    return e/np.maximum(1e-4, sum(e))
+    e = np.exp(-(x - np.min(x))/lmb)
+    return e/sum(e)
 
 
 class BBO :
@@ -47,12 +45,8 @@ class BBO :
         self.num_rollouts = num_rollouts
         self.num_dmps = num_dmps
         self.num_dmp_params = num_params
-        self.num_params = int(self.num_dmps*(num_params+2))
+        self.num_params = int(self.num_dmps*(num_params))
         self.theta = np.zeros(self.num_params)
-        goals = np.where((np.arange(
-            self.num_params)%(self.num_dmp_params+2)) ==
-                         self.num_dmp_params + 1)
-        self.theta[goals] = 1
         self.Cov = np.eye(self.num_params, self.num_params)
         self.epochs = epochs
         self.decay_amp = sigma_decay_amp
@@ -102,7 +96,7 @@ class BBO :
         rollouts = []
         errs = []
                 
-        rng = self.num_dmp_params + 2
+        rng = self.num_dmp_params 
         for idx, (dmp, targetk) in enumerate(zip(self.dmps, self.target)): 
             dmp_rollouts = []
             dmp_errs = []
@@ -110,12 +104,13 @@ class BBO :
                 thetak = theta.copy()
                 dmp_theta = thetak[(idx*rng):((idx+1)*rng)] 
                 dmp[k].reset()
-                dmp[k].theta = dmp_theta[:-2]
-                dmp[k].set_start(dmp_theta[-2])
-                dmp[k].set_goal(dmp_theta[-1])
+                dmp[k].theta = dmp_theta
+                #dmp[k].set_start(dmp_theta[-2])
+                #dmp[k].set_goal(dmp_theta[-1])
                 dmp[k].rollout()
                 rollout = dmp[k].S["y"]
-                err = (targetk - rollout)
+                err = targetk - rollout
+    
                 dmp_rollouts.append(rollout)
                 dmp_errs.append(err)
             errs.append(np.vstack(dmp_errs))
@@ -166,15 +161,15 @@ class BBO :
 
 if __name__ == "__main__":
     
-    dmp_num_theta = 20
-    dmp_stime = 100
-    dmp_dt = 0.1
-    dmp_sigma = 0.01
+    dmp_num_theta = 30
+    dmp_stime = 30
+    dmp_dt = 0.3
+    dmp_sigma = 0.05
     
-    bbo_sigma = 2e-1
-    bbo_lmb = 0.01
+    bbo_sigma = 2.0e-03
+    bbo_lmb = 0.9
     bbo_epochs = 150
-    bbo_K = 20
+    bbo_K = 30
     bbo_num_dmps = 2
 
     # the BBO object
@@ -182,14 +177,25 @@ if __name__ == "__main__":
               dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
               num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
                sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
-              sigma_decay_amp=0.0, sigma_decay_period=0.01)
+              sigma_decay_amp=0, sigma_decay_period=0.1)
     
 
     # target trajectory
-    x = np.linspace(.2, .9, dmp_stime)
-    a = np.linspace(0, 2.5*np.pi, dmp_stime)
-    targetx = x#*np.cos(a)
-    targety = x#*np.sin(a)
+    x = np.linspace(0.0, 1.0, dmp_stime)
+    a = x*2*np.pi
+    targetx = x*np.cos(a)+x
+    targetx /= max(targetx)
+    targety = x*np.sin(a)+x
+    targety /= max(targety)
+ 
+    fig1 = plt.figure()
+    ax01 = fig1.add_subplot(211)
+    ax01.plot(targetx)
+    ax01.plot(targety)
+    ax02 = fig1.add_subplot(212)
+    ax02.plot(targetx, targety)
+
+
     
     bbo.set_target([targetx, targety])
 
@@ -213,7 +219,14 @@ if __name__ == "__main__":
     # ---------------------------------------
     
     fig2 = plt.figure()
-    plt.plot(targetx,targety, lw=2, color="red")
-    plt.plot(rs[0].T,rs[1].T, lw=0.2, color="black")
-    plt.plot(rollouts[0].T, rollouts[1].T, color="green", lw=3)
+    ax11 = fig2.add_subplot(211)
+    ax11.plot(rs[0].T, lw=0.2, color="#220000")
+    ax11.plot(rs[1].T, lw=0.2, color="#002200")
+    ax11.plot(rollouts[0].T, lw=0.2, color="#884444")
+    ax11.plot(rollouts[1].T, lw=0.2, color="#448844")   
+    ax12 = fig2.add_subplot(212)
+    ax12.plot(targetx, targety, lw=2, color="red")
+    ax12.plot(rs[0].T,rs[1].T, lw=0.2, color="black")
+    ax12.plot(rollouts[0].T, rollouts[1].T, color="green", lw=3)
     plt.show()
+    

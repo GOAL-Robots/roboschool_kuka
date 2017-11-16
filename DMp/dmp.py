@@ -63,7 +63,7 @@ class DMP :
         self.sigma = sigma
         
         self.dt = dt
-        self.tau = 0.04*self.stime*self.dt
+        self.tau = 0.05*self.stime*self.dt
        
         # canonical system params
         self.x0 = 1
