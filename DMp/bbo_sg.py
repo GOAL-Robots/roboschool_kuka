@@ -4,10 +4,13 @@ from dmp import DMP
 import matplotlib.pyplot as plt
 np.set_printoptions(precision=3, suppress=True)
 
-def softmax(x, lmb):
+def cost_softmax(x, lmb):
     e = np.exp(-(x - np.min(x))/lmb)
     return e/sum(e)
 
+def rew_softmax(x, lmb):
+    e = np.exp((x - np.max(x))/lmb)
+    return e/sum(e)
 
 class BBO :
     "P^2BB: Policy Improvement through Black Vox Optimization"
@@ -15,7 +18,8 @@ class BBO :
                  dmp_stime=100, dmp_dt=0.1, dmp_sigma=0.1,
                  num_rollouts=20, num_dmps=1,
                  sigma=0.001, lmb=0.1, epochs=100, 
-                 sigma_decay_amp=0, sigma_decay_period=0.1):
+                 sigma_decay_amp=0, sigma_decay_period=0.1, 
+                 softmax=cost_softmax):
         '''
         :param num_params: Integer. Number of parameters to optimize 
         :param n   # create dmps  
@@ -45,7 +49,7 @@ class BBO :
         self.num_rollouts = num_rollouts
         self.num_dmps = num_dmps
         self.num_dmp_params = num_params
-        self.num_params = int(self.num_dmps*(num_params))
+        self.num_params = int(self.num_dmps*(num_params + 1))
         self.theta = np.zeros(self.num_params)
         self.Cov = np.eye(self.num_params, self.num_params)
         self.epochs = epochs
@@ -53,6 +57,8 @@ class BBO :
         self.decay_period = sigma_decay_period
         self.epoch = 0
         self.err = 1.0
+        self.softmax = softmax
+        self.target = None
         
         # create dmps  
         self.dmps = []
@@ -61,7 +67,10 @@ class BBO :
                           g=1, stime=self.dmp_stime,
                           dt=self.dmp_dt, sigma=self.dmp_sigma) 
                      for k in range(self.num_rollouts)])
-           
+        
+        # define the cost function 
+        self.cost_func = self.supervized_cost_func
+        
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
         """
@@ -82,10 +91,14 @@ class BBO :
             :param Sk: array(Float), rollout costs in an iteration 
         '''
         # Cost-related probabilities of sampled parameters
-        probs = softmax(Sk, self.lmb).reshape(self.num_rollouts, 1)
+        probs = self.softmax(Sk, self.lmb).reshape(self.num_rollouts, 1)
         # update with the weighted average of sampled parameters
         self.theta += np.sum(self.eps * probs, 0)
     
+    def supervized_cost_func(self, rollout, dmp_idx):
+        targetk = self.target[dmp_idx]
+        return targetk - rollout
+     
     def rollouts(self, thetas):
         """ Produce a rollout
             :param thetas: array(num_rollouts X num_params/num_dmps)
@@ -96,21 +109,20 @@ class BBO :
         rollouts = []
         errs = []
                 
-        rng = self.num_dmp_params 
-        for idx, (dmp, targetk) in enumerate(zip(self.dmps, self.target)): 
+        rng = self.num_dmp_params + 1
+        for idx, dmp  in enumerate(self.dmps): 
             dmp_rollouts = []
             dmp_errs = []
             for k, theta in enumerate(thetas):
                 thetak = theta.copy()
-                dmp_theta = thetak[(idx*rng):((idx+1)*rng)] 
+                dmp_theta = thetak[(idx*rng):((idx+1)*rng -1)] 
                 dmp[k].reset()
                 dmp[k].theta = dmp_theta
                 #dmp[k].set_start(dmp_theta[-2])
-                #dmp[k].set_goal(dmp_theta[-1])
+                dmp[k].set_goal(dmp_theta[-1])
                 dmp[k].rollout()
                 rollout = dmp[k].S["y"]
-                err = targetk - rollout
-    
+                err = self.cost_func(rollout, idx)
                 dmp_rollouts.append(rollout)
                 dmp_errs.append(err)
             errs.append(np.vstack(dmp_errs))
@@ -142,7 +154,6 @@ class BBO :
             thetak = self.theta + self.eps[k]
             Sk[k] += 0.5 * self.sigma * (thetak).dot(thetak) 
     
-
         return Sk
         
     def iteration(self, explore = True):
@@ -161,14 +172,14 @@ class BBO :
 
 if __name__ == "__main__":
     
-    dmp_num_theta = 30
-    dmp_stime = 30
-    dmp_dt = 0.3
+    dmp_num_theta = 50
+    dmp_stime = 200
+    dmp_dt = 0.1
     dmp_sigma = 0.05
     
-    bbo_sigma = 2.0e-03
-    bbo_lmb = 0.9
-    bbo_epochs = 150
+    bbo_sigma = 5.0e-04
+    bbo_lmb = 0.5
+    bbo_epochs = 20
     bbo_K = 30
     bbo_num_dmps = 2
 
@@ -177,16 +188,20 @@ if __name__ == "__main__":
               dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
               num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
                sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
-              sigma_decay_amp=0, sigma_decay_period=0.1)
+              sigma_decay_amp=0.0, sigma_decay_period=0.1)
     
 
     # target trajectory
-    x = np.linspace(0.0, 1.0, dmp_stime)
+    partial_stime = int(dmp_stime*0.7)
+    x = np.linspace(0.0, 1.0, partial_stime)
     a = x*2*np.pi
     targetx = x*np.cos(a)+x
     targetx /= max(targetx)
+    targetx = np.hstack((targetx, np.ones(int(dmp_stime - partial_stime))))
     targety = x*np.sin(a)+x
     targety /= max(targety)
+    targety = np.hstack((targety, np.ones(dmp_stime - partial_stime)))
+
  
     fig1 = plt.figure()
     ax01 = fig1.add_subplot(211)
