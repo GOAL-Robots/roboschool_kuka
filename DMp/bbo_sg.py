@@ -77,6 +77,9 @@ class BBO :
             np.zeros(self.num_params), 
             self.Cov * Sigma, self.num_rollouts)
     
+    def set_target(self, target):
+        self.target = target
+    
     def update(self, Sk):
         ''' Update parameters
         
@@ -98,7 +101,7 @@ class BBO :
         errs = []
                 
         rng = self.num_dmp_params + 2
-        for idx, dmp in enumerate(self.dmps): 
+        for idx, (dmp, targetk) in enumerate(zip(self.dmps, self.target)): 
             dmp_rollouts = []
             dmp_errs = []
             for k, theta in enumerate(thetas):
@@ -110,7 +113,7 @@ class BBO :
                 dmp[k].set_goal(dmp_theta[-1])
                 dmp[k].rollout()
                 rollout = dmp[k].S["y"]
-                err = (target - rollout)
+                err = (targetk - rollout)
                 dmp_rollouts.append(rollout)
                 dmp_errs.append(err)
             errs.append(np.vstack(dmp_errs))
@@ -132,8 +135,8 @@ class BBO :
             Sk[k] = 0
             # final costs
             for err in errs:
-                Sk[k] + err[k,-3]
-                for j in range(self.num_params - 2) :
+                Sk[k] += err[k,-1]
+                for j in range(self.num_dmp_params) :
                     # timestep cost 
                     Sk[k] += err[k, j]
                     # cost-to-go integral
@@ -161,29 +164,32 @@ class BBO :
 
 if __name__ == "__main__":
     
-    dmp_num_theta = 40
+    dmp_num_theta = 20
     dmp_stime = 100
     dmp_dt = 0.1
     dmp_sigma = 0.01
     
-    bbo_sigma = 3e-3
-    bbo_lmb = 0.2
-    bbo_epochs = 100
+    bbo_sigma = 2e-2
+    bbo_lmb = 0.5
+    bbo_epochs = 150
     bbo_K = 20
-    bbo_num_dmps = 1
+    bbo_num_dmps = 2
 
     # the BBO object
     bbo = BBO(num_params=dmp_num_theta, 
               dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
               num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
                sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
-              sigma_decay_amp=0.05, sigma_decay_period=0.01)
+              sigma_decay_amp=0.0, sigma_decay_period=0.01)
     
 
     # target trajectory
-    x = np.linspace(0, 6*np.pi, dmp_stime)
-    target = 0.5*(0.5*np.sin(x)+0.5)*(1-(x/(6*np.pi))) + x/(6*np.pi)
-    target /= target.max()
+    x = np.linspace(.2, .9, dmp_stime)
+    a = np.linspace(0, 2.5*np.pi, dmp_stime)
+    targetx = x*np.cos(a)
+    targety = x*np.sin(a)
+    
+    bbo.set_target([targetx, targety])
 
     costs = np.zeros(bbo_epochs)
     fig = plt.figure()
@@ -192,19 +198,21 @@ if __name__ == "__main__":
     for t in range(bbo_epochs):
         # iterate -------------
         rs,_ = bbo.iteration()
+        sys.stdout.write("%d\t"% t)
         # ---------------------
         costs[t] = bbo.err
         line.set_ydata(costs)
         ax.relim()
         ax.autoscale_view()
-        plt.pause(0.001)
-        
+        #plt.pause(0.001)
+    print
+    
     # test ----------------------------------
     rollouts,_ = bbo.iteration(explore=False)
     # ---------------------------------------
     
     fig2 = plt.figure()
-    plt.plot(target, lw=2, color="red")
-    plt.plot(rs[0].T, lw=0.2, color="black")
-    plt.plot(rollouts[0].T, color="green", lw=3)
+    plt.plot(targetx,targety, lw=2, color="red")
+    plt.plot(rs[0].T,rs[1].T, lw=0.2, color="black")
+    plt.plot(rollouts[0].T, rollouts[1].T, color="green", lw=3)
     plt.show()
