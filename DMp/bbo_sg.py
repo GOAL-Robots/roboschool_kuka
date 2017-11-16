@@ -2,11 +2,13 @@ import sys
 import numpy as np
 from dmp import DMP
 import matplotlib.pyplot as plt
-
+np.set_printoptions(precision=3, suppress=True)
 
 def softmax(x, lmb):
-    e = np.exp(-x/lmb)
-    return e/sum(e)
+    print x
+    e = np.exp(-x/np.maximum(1e-4, lmb))
+    print e
+    return e/np.maximum(1e-4, sum(e))
 
 
 class BBO :
@@ -169,8 +171,8 @@ if __name__ == "__main__":
     dmp_dt = 0.1
     dmp_sigma = 0.01
     
-    bbo_sigma = 2e-2
-    bbo_lmb = 0.5
+    bbo_sigma = 2e-1
+    bbo_lmb = 0.01
     bbo_epochs = 150
     bbo_K = 20
     bbo_num_dmps = 2
@@ -186,8 +188,8 @@ if __name__ == "__main__":
     # target trajectory
     x = np.linspace(.2, .9, dmp_stime)
     a = np.linspace(0, 2.5*np.pi, dmp_stime)
-    targetx = x*np.cos(a)
-    targety = x*np.sin(a)
+    targetx = x#*np.cos(a)
+    targety = x#*np.sin(a)
     
     bbo.set_target([targetx, targety])
 
@@ -198,13 +200,12 @@ if __name__ == "__main__":
     for t in range(bbo_epochs):
         # iterate -------------
         rs,_ = bbo.iteration()
-        sys.stdout.write("%d\t"% t)
         # ---------------------
         costs[t] = bbo.err
         line.set_ydata(costs)
         ax.relim()
         ax.autoscale_view()
-        #plt.pause(0.001)
+        plt.pause(0.001)
     print
     
     # test ----------------------------------
