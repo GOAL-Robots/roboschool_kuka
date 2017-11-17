@@ -22,13 +22,7 @@ class BBO :
                  softmax=cost_softmax):
         '''
         :param num_params: Integer. Number of parameters to optimize 
-        :param n   # create dmps  
-    dmps = []
-    for x in range(bbo_num_dmps):
-        dmps.append([DMP( n=dmp_num_theta, s=dmp_s, 
-                          g=dmp_g, stime=dmp_stime, 
-                          dt=dmp_dt, sigma=dmp_sigma) 
-                     for k in range(bbo_K)])um_rollouts: Integer. number of rollouts per iteration
+        :param n um_rollouts: Integer. number of rollouts per iteration
         :param num_dmps: Integer, number of dmps
         :param dmp_stime: Integer, length of the trajectories in timesteps
         :param dmp_dt: Float, integration step
@@ -102,17 +96,14 @@ class BBO :
     def rollouts(self, thetas):
         """ Produce a rollout
             :param thetas: array(num_rollouts X num_params/num_dmps)
-            :return (errs, rollouts) 
-                errs: list(array(num_rollouts, stime))
+            :return (rollouts) 
                 rollouts: list(array(num_rollouts, stime))
         """   
         rollouts = []
-        errs = []
                 
         rng = self.num_dmp_params + 1
         for idx, dmp  in enumerate(self.dmps): 
             dmp_rollouts = []
-            dmp_errs = []
             for k, theta in enumerate(thetas):
                 thetak = theta.copy()
                 dmp_theta = thetak[(idx*rng):((idx+1)*rng -1)] 
@@ -122,12 +113,20 @@ class BBO :
                 dmp[k].set_goal(dmp_theta[-1])
                 dmp[k].rollout()
                 rollout = dmp[k].S["y"]
-                err = self.cost_func(rollout, idx)
                 dmp_rollouts.append(rollout)
+            rollouts.append(np.vstack(dmp_rollouts))
+        return rollouts
+    
+    def outcomes(self, rollouts):
+        errs = []
+                
+        for idx, dmp_rollouts  in enumerate(rollouts): 
+            dmp_errs = []
+            for k, rollout in enumerate(dmp_rollouts):
+                err = self.cost_func(rollout, idx)
                 dmp_errs.append(err)
             errs.append(np.vstack(dmp_errs))
-            rollouts.append(np.vstack(dmp_rollouts))
-        return errs, rollouts
+        return errs    
     
     def eval(self, errs):
         """ evaluate rollouts
@@ -162,7 +161,8 @@ class BBO :
                 or test (False)
         """
         self.sample()
-        costs, rollouts = self.rollouts(self.theta + explore*self.eps)    
+        rollouts = self.rollouts(self.theta + explore*self.eps) 
+        costs = self.outcomes(rollouts)   
         Sk = self.eval(costs)
         self.update(Sk)
         self.epoch += 1
@@ -172,15 +172,15 @@ class BBO :
 
 if __name__ == "__main__":
     
-    dmp_num_theta = 50
-    dmp_stime = 200
-    dmp_dt = 0.1
+    dmp_num_theta = 10
+    dmp_stime = 60
+    dmp_dt = 0.3
     dmp_sigma = 0.05
     
-    bbo_sigma = 5.0e-04
-    bbo_lmb = 0.5
-    bbo_epochs = 20
-    bbo_K = 30
+    bbo_sigma = 1.0e-03
+    bbo_lmb = 0.1
+    bbo_epochs = 100
+    bbo_K = 45
     bbo_num_dmps = 2
 
     # the BBO object
