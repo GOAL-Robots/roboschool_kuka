@@ -152,7 +152,7 @@ class BBO :
                     Sk[k] += err[k, j:].sum() 
             # regularization
             thetak = self.theta + self.eps[k]
-            Sk[k] += 0.5 * self.sigma * (thetak).dot(thetak) 
+            Sk[k] += 0.5 * np.mean(self.sigma) * (thetak).dot(thetak) 
     
         return Sk
         
