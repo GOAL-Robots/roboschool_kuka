@@ -63,7 +63,7 @@ class BBO :
                      for k in range(self.num_rollouts)])
         
         # define the cost function 
-        self.cost_func = self.supervized_cost_func
+        self.cost_func = self.supervised_cost_func
         
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
@@ -89,9 +89,10 @@ class BBO :
         # update with the weighted average of sampled parameters
         self.theta += np.sum(self.eps * probs, 0)
     
-    def supervized_cost_func(self, rollout, dmp_idx):
-        targetk = self.target[dmp_idx]
-        return targetk - rollout
+    def supervised_cost_func(self, rollouts):
+        trgts = np.array(self.target)
+        trgts = trgts.reshape(self.num_dmps, 1, self.dmp_stime)
+        return (trgts - rollouts)**2
      
     def rollouts(self, thetas):
         """ Produce a rollout
@@ -109,7 +110,6 @@ class BBO :
                 dmp_theta = thetak[(idx*rng):((idx+1)*rng -1)] 
                 dmp[k].reset()
                 dmp[k].theta = dmp_theta
-                #dmp[k].set_start(dmp_theta[-2])
                 dmp[k].set_goal(dmp_theta[-1])
                 dmp[k].rollout()
                 rollout = dmp[k].S["y"]
@@ -118,14 +118,14 @@ class BBO :
         return rollouts
     
     def outcomes(self, rollouts):
-        errs = []
-                
-        for idx, dmp_rollouts  in enumerate(rollouts): 
-            dmp_errs = []
-            for k, rollout in enumerate(dmp_rollouts):
-                err = self.cost_func(rollout, idx)
-                dmp_errs.append(err)
-            errs.append(np.vstack(dmp_errs))
+        """
+        compute outcomes for a stack of rollouts
+        :param rollouts: list(array(num_rollouts, stime)) 
+                for each dmp a stak of k rollouts
+        """              
+        #rollouts = np.vstack(rollouts)
+        rollouts = np.array(rollouts)        
+        errs = self.cost_func(rollouts)           
         return errs    
     
     def eval(self, errs):
@@ -133,8 +133,7 @@ class BBO :
             :param errs: list(array(float)), Matrices containing DMPs' errors 
                  at each timestep (columns) of each rollout (rows) 
             return: array(float), overall cost of each rollout 
-        """
-        errs = [err**2 for err in errs]
+        """   
         self.err = np.mean(np.mean(errs,1)) # store the mean square error
    
         # comute costs
@@ -145,10 +144,8 @@ class BBO :
             for err in errs:
                 Sk[k] += err[k,-1]
                 for j in range(self.num_dmp_params) :
-                    # timestep cost 
-                    Sk[k] += err[k, j]
                     # cost-to-go integral
-                    Sk[k] += err[k, j:].sum() 
+                    Sk[k] += err[k, j:-1].sum() 
             # regularization
             thetak = self.theta + self.eps[k]
             Sk[k] += 0.5 * np.mean(self.sigma) * (thetak).dot(thetak) 
@@ -159,6 +156,7 @@ class BBO :
         """ Run an iteration
             :param explore: Bool, If the iteration is for training (True) 
                 or test (False)
+            :return: (rollouts, total value of the iteration)
         """
         self.sample()
         rollouts = self.rollouts(self.theta + explore*self.eps) 
@@ -166,7 +164,7 @@ class BBO :
         Sk = self.eval(costs)
         self.update(Sk)
         self.epoch += 1
-        return rollouts, Sk
+        return rollouts, self.err
     
 #------------------------------------------------------------------------------ 
 

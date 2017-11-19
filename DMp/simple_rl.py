@@ -18,24 +18,35 @@ if __name__ == "__main__":
     bbo_epochs = 60
     bbo_K = 20
     bbo_num_dmps = 2
-    bbo_sigma = 5.0e-04
+    bbo_sigma = 1.0e-06
         
     # the BBO object
     bbo = bbo.BBO(num_params=dmp_num_theta, 
               dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
               num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
               sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
-              sigma_decay_amp=0.5, sigma_decay_period=0.02, 
+              sigma_decay_amp=2.0, sigma_decay_period=0.1, 
               softmax=bbo.rew_softmax)
     
     
-    coords = np.vstack([ np.random.uniform(-1.5, 1.5, (2,)), 
-               np.random.uniform( 0.0, 1.5, (2,)) ]).T
+
+    rew = np.random.uniform(-1.5, 1.5, 2)
     
-    def rew_func(rollout, dmp_idx):
-        rew = np.array(1*np.logical_and(rollout >= coords[dmp_idx][0], 
-                                        rollout <=coords[dmp_idx][1]))
-        return rew  
+    x_limits = [rew[0] - 0.1, rew[0] + 0.1]
+    y_limits = [rew[1] - 0.1, rew[1] + 0.1]
+    
+    def rew_func(rollouts):
+        
+        rew = np.logical_and(
+            rollouts[0] >= x_limits[0], 
+            rollouts[0] <= x_limits[1]) 
+        rew = np.array((rew, np.logical_and(
+            rollouts[1] >= y_limits[0],
+            rollouts[1] <= y_limits[1])))
+        rew = 1*np.logical_and(rew[0], rew[1])
+        rew = np.array([rew])
+        rew = 10*rew - 0.1
+        return rew
     
     bbo.cost_func = rew_func
     
@@ -68,8 +79,7 @@ if __name__ == "__main__":
     ax12.plot(rs[0].T,rs[1].T, lw=0.2, color="black")
     ax12.plot(rollouts[0].T, rollouts[1].T, color="green", lw=3)
     ax12.scatter(0.0, 0.0, color="blue", s=60)
-    ax12.scatter(coords[0][0] + (coords[0][1] - coords[0][0])*0.5,
-                 coords[1][0] + (coords[1][1] - coords[1][0])*0.5, 
+    ax12.scatter(*rew, 
                  color="red", s=60)
     ax12.set_xlim([-1.5,1.5])
     ax12.set_ylim([-1.5,1.5])

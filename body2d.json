@@ -20,6 +20,7 @@
                 {
                     "name": "", 
                     "density": 1, 
+                    "group_index": 0,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -52,6 +53,7 @@
                 {
                     "name": "", 
                     "density": 1, 
+                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -83,6 +85,7 @@
                 {
                     "name": "",
                     "density": 1, 
+                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -114,6 +117,7 @@
                 {
                     "name": "",
                     "density": 1, 
+                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -145,6 +149,7 @@
                 {
                     "name": "",
                     "density": 1, 
+                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -176,6 +181,7 @@
                 {
                     "name": "",
                     "density": 1, 
+                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -206,6 +212,7 @@
             "fixture": [
                 {
                     "name": "",
+                    "group_index": 2,
                     "density": 1, 
                     "polygon": {
                         "vertices": {
@@ -238,6 +245,7 @@
                 {
                     "name": "",
                     "density": 1, 
+                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
