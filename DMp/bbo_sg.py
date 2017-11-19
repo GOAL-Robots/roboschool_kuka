@@ -19,7 +19,7 @@ class BBO :
                  num_rollouts=20, num_dmps=1,
                  sigma=0.001, lmb=0.1, epochs=100, 
                  sigma_decay_amp=0, sigma_decay_period=0.1, 
-                 softmax=cost_softmax):
+                 softmax=None, cost_func=None):
         '''
         :param num_params: Integer. Number of parameters to optimize 
         :param n um_rollouts: Integer. number of rollouts per iteration
@@ -51,8 +51,6 @@ class BBO :
         self.decay_period = sigma_decay_period
         self.epoch = 0
         self.err = 1.0
-        self.softmax = softmax
-        self.target = None
         
         # create dmps  
         self.dmps = []
@@ -61,9 +59,11 @@ class BBO :
                           g=1, stime=self.dmp_stime,
                           dt=self.dmp_dt, sigma=self.dmp_sigma) 
                      for k in range(self.num_rollouts)])
-        
+
+        # define softmax
+        self.softmax = softmax        
         # define the cost function 
-        self.cost_func = self.supervised_cost_func
+        self.cost_func = cost_func
         
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
@@ -76,9 +76,6 @@ class BBO :
             np.zeros(self.num_params), 
             self.Cov * Sigma, self.num_rollouts)
     
-    def set_target(self, target):
-        self.target = target
-    
     def update(self, Sk):
         ''' Update parameters
         
@@ -89,16 +86,10 @@ class BBO :
         # update with the weighted average of sampled parameters
         self.theta += np.sum(self.eps * probs, 0)
     
-    def supervised_cost_func(self, rollouts):
-        trgts = np.array(self.target)
-        trgts = trgts.reshape(self.num_dmps, 1, self.dmp_stime)
-        return (trgts - rollouts)**2
-     
     def rollouts(self, thetas):
         """ Produce a rollout
             :param thetas: array(num_rollouts X num_params/num_dmps)
-            :return (rollouts) 
-                rollouts: list(array(num_rollouts, stime))
+            :return: list(array(num_rollouts, stime)) rollouts
         """   
         rollouts = []
                 
@@ -121,7 +112,7 @@ class BBO :
         """
         compute outcomes for a stack of rollouts
         :param rollouts: list(array(num_rollouts, stime)) 
-                for each dmp a stak of k rollouts
+                for each dmp a stack of k rollouts
         """              
         #rollouts = np.vstack(rollouts)
         rollouts = np.array(rollouts)        
@@ -181,14 +172,6 @@ if __name__ == "__main__":
     bbo_K = 45
     bbo_num_dmps = 2
 
-    # the BBO object
-    bbo = BBO(num_params=dmp_num_theta, 
-              dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
-              num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
-               sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
-              sigma_decay_amp=0.0, sigma_decay_period=0.1)
-    
-
     # target trajectory
     partial_stime = int(dmp_stime*0.7)
     x = np.linspace(0.0, 1.0, partial_stime)
@@ -208,9 +191,21 @@ if __name__ == "__main__":
     ax02 = fig1.add_subplot(212)
     ax02.plot(targetx, targety)
 
-
+    target = [targetx, targety]
     
-    bbo.set_target([targetx, targety])
+    def supervised_cost_func(rollouts):
+        trgts = np.array(target)
+        trgts = trgts.reshape(bbo_num_dmps, 1, dmp_stime)
+        return (trgts - rollouts)**2
+
+    # the BBO object
+    bbo = BBO(num_params=dmp_num_theta, 
+              dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
+              num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
+               sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
+              sigma_decay_amp=0.0, sigma_decay_period=0.1, 
+              softmax=cost_softmax, cost_func=supervised_cost_func)
+    
 
     costs = np.zeros(bbo_epochs)
     fig = plt.figure()
