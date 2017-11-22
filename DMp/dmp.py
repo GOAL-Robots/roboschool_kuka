@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 import os
 
 def init_rng():
-    '''
-    Set a random number generator witha random seed
+    ''' Set a random number generator witha random seed
     '''
     seed = np.fromstring(os.urandom(4), dtype=np.uint32)[0]
     rng = np.random.RandomState(seed)
@@ -17,8 +16,7 @@ def gauss(x, c, s) :
     return np.exp( -(1/(2*s**2))*(x - c)**2  )
 
 class DMP :
-    """
-    implements a 1D dynamical movememt primitive
+    """ Implements a 1D dynamical movememt primitive
 
     tau*ddy = alpha_ddy*(beta_ddy*(g - y) -dy) + f
     tau*dx = -alpha_x*x
@@ -30,19 +28,19 @@ class DMP :
 
     def __init__(self, n = 30, s = 0, g = 1, stime = 200, dt = 0.01, sigma = 0.01, rng = None, noise = None, n_sigma = 0.02) :
         """
-        :param  n       Number of parameters of the forcing component
-        :param  s       starting point
-        :param  g       end point
-        :param  stime   timesteps
-        :param  dt      integration time
-        :param  sigma   std dev of the gaussian bases
-        :param  noise   add noise to the output
-        :param  n_sigma noise std dev
-        :type   n       int
-        :type   s       float
-        :type   g       float
-        :type   noise   bool    
-        :type   sigma   float    
+        :param n: Number of parameters of the forcing component
+        :param s: starting point
+        :param g: end point
+        :param stime: timesteps
+        :param dt: integration time
+        :param sigma: std dev of the gaussian bases
+        :param noise: add noise to the output
+        :param n_sigma: noise std dev
+        :type n: int
+        :type s: float
+        :type g: float
+        :type noise: bool    
+        :type sigma: float    
         
         """
         self.n = n
@@ -75,13 +73,7 @@ class DMP :
         self.alpha_ddy = 3.0*self.alpha_x 
         self.beta_ddy = self.alpha_ddy/4.0
 
-        # state storage
-        self.S = { "ddy": np.zeros(self.stime),
-              "dy": np.zeros(self.stime),
-              "y": np.zeros(self.stime),
-              "x": np.zeros(self.stime),
-              "phi": np.zeros([self.n, self.stime])
-              }
+        self.reset()
 
     def set_start(self, start):
         # PD params
@@ -92,14 +84,13 @@ class DMP :
 
 
     def get_bases(self, x):
-        """
-        Computes the bases of a state x
+        """ Computes the bases of a state x
 
-        :param  x   the current state of the canonical system
-        :type   x   float
+        :param x: the current state of the canonical system
+        :type x: float
 
-        :return an array of activations of the n bases
-        :rtype float
+        :return: an array of activations of the n bases
+        :rtype: float
         """
         phi = np.array([ gauss(x, self.c[i], self.sigma) 
             for i in xrange(self.n) ])
@@ -120,13 +111,13 @@ class DMP :
         """
         Performs a single episode of 'stime' timesteps
 
-        :return     a dictionary with the timeseries of 
+        :return: a dictionary with the timeseries of 
                     ddy (acceleration), 
                     dy (speed), -
                     y (position),
                     x (time-setting decay,
                     phi (vector of bases activations)
-        :rtype      dict( str : np.array() )
+        :rtype: dict( str : np.array() )
         """
         
         # reset vars
@@ -168,9 +159,8 @@ class DMP :
             self.S["phi"][:,t] = phi
 
     def lwr(self, target) :
-        '''
-        Locally weighted regression to learn the weights of 
-        the forcing component
+        ''' Locally weighted regression to learn the weights of 
+            the forcing component
         '''
 
         s = self.S["x"]*(self.g -  self.y0)
