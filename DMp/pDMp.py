@@ -129,7 +129,7 @@ class DMP :
         """ Performs a single episode of 'stime' timesteps
         
         :param p: current additional parameters
-	:type p: list(float)       
+	    :type p: list(float)       
 
         :return: a dictionary with the timeseries of 
                     ddy (acceleration), 
