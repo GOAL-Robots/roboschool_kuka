@@ -16,21 +16,26 @@ def init_rng():
 def gauss(x, c, s) :
     return np.exp( -(1/(2*s**2))*(x - c)**2  )
 
+def ngrid(npts, mins, maxs):
+    assert len(npts) == len(mins)
+    assert len(mins) == len(maxs)
+    grids = np.meshgrid(*[np.linspace(i,j,n) for n,i,j in zip(npts, mins, maxs)])
+    sparse_grid =  np.vstack([grid.ravel() for grid in  grids]).T 
+    return sparse_grid
+
 class DMP :
     """
-    implements a 1D dynamical movememt primitive
+    implements a 1D parametrized dynamical movememt primitive
 
-    tau*ddy = alpha_ddy*(beta_ddy*(g - y) -dy) + f
-    tau*dx = -alpha_x*x
-    
-    f =  (sum_i(psi_i(x)*theta_i) / sum_i(psi_i(x)) )*x*(g - y0)
-    psi_i(k) = exp( - (1/(2*sigma_i**2))*(k - c_i)**2 )
 
     """
 
-    def __init__(self, n = 30, s = 0, g = 1, stime = 200, dt = 0.01, sigma = 0.01, rng = None, noise = None, n_sigma = 0.02) :
+    def __init__(self, n = 30, p = 0, pdim = None, s = 0, g = 1, stime = 200, dt = 0.01, sigma = 0.01, 
+                 rng = None, noise = None, n_sigma = 0.02) :
         """
         :param  n       Number of parameters of the forcing component
+        :param  p       Number of additional parameters
+        :param  pdim    list of the bin number for each additional parameter
         :param  s       starting point
         :param  g       end point
         :param  stime   timesteps
@@ -46,6 +51,7 @@ class DMP :
         
         """
         self.n = n
+        self.p = p
         self.s = s
         self.g = g
         self.stime = stime
@@ -57,9 +63,17 @@ class DMP :
             rng,_ = init_rng()
         self.rng = rng
         
+
+        # centroids
+        if pdim is None:
+            pdim = [10 for x in range(p)]
+        self.c = ngrid(pdim +[n], 
+                       np.zeros(p + 1), 
+                       np.ones(p + 1))
+
         # forcing component params
-        self.theta =  rng.randn(n)
-        self.c = np.linspace(0,1, n)
+        self.theta =  rng.randn(*self.c.shape)
+        
         self.sigma = sigma
         
         self.dt = dt
@@ -80,7 +94,7 @@ class DMP :
               "dy": np.zeros(self.stime),
               "y": np.zeros(self.stime),
               "x": np.zeros(self.stime),
-              "phi": np.zeros([self.n, self.stime])
+              "phi": np.zeros([self.stime] + list(self.c.shape)) 
               }
 
     def set_start(self, start):
@@ -91,19 +105,23 @@ class DMP :
         self.g = goal
 
 
-    def get_bases(self, x):
+    def get_bases(self, x, p=None):
         """
         Computes the bases of a state x
 
-        :param  x   the current state of the canonical system
-        :type   x   float
+        :param x: the current state of the canonical system
+        :type x: float
+        :param x: the current state of the additional parameters
+        :type p: np.array(float)
 
         :return an array of activations of the n bases
         :rtype float
         """
-        phi = np.array([ gauss(x, self.c[i], self.sigma) 
-            for i in xrange(self.n) ])
-
+        if p is None:
+            phi = gauss(np.hstack((np.zeros(len(c) - 1), x)), self.c, self.sigma) 
+        else:
+            phi = gauss(np.hstack((p, x)), self.c, self.sigma) 
+            
         return phi
 
     def reset(self) :       
@@ -113,20 +131,22 @@ class DMP :
               "dy": np.zeros(self.stime),
               "y": np.zeros(self.stime),
               "x": np.zeros(self.stime),
-              "phi": np.zeros([self.n, self.stime]) 
+              "phi": np.zeros([self.stime] + list(self.c.shape)) 
               }
     
-    def rollout(self) :
+    def rollout(self, p) :
         """
         Performs a single episode of 'stime' timesteps
-
-        :return     a dictionary with the timeseries of 
+        
+        :param p:   current additional parameters
+        
+        :return:    a dictionary with the timeseries of 
                     ddy (acceleration), 
                     dy (speed), -
                     y (position),
                     x (time-setting decay,
                     phi (vector of bases activations)
-        :rtype      dict( str : np.array() )
+        :rtype:     dict( str : np.array() )
         """
         
         # reset vars
@@ -134,107 +154,49 @@ class DMP :
         self.y = self.y0
         self.dy = 0
         self.ddy = 0
-
+ 
         for t in xrange(self.stime):
-
+ 
             # forcing component
-            phi = self.get_bases(self.x)
+            phi = self.get_bases(self.x, p)
             fc =  ( phi/phi.sum())
             fc *= self.x
-            fc *= (self.g - self.y0)
-        
+            fc *= (self.g - self.y0)            
+         
             # PD acceleration
             pd =  self.alpha_ddy*(self.beta_ddy*(self.g - self.y) - self.dy)  
-            
+             
             # increment of the transformation system
-            self.ddy = (self.dt/self.tau)*(pd + np.dot(fc, self.theta))
-
+            self.ddy = (self.dt/self.tau)*(pd + np.dot(fc.ravel(), self.theta.ravel()))
+ 
             if self.noise :
                 self.ddy = self.ddy + self.rng.randn()*self.n_sigma
-
+ 
             # increment of the canonical system
             dx = -(self.dt/self.tau)*self.alpha_x*self.x
-
+ 
             # updates
             self.dy += self.ddy    # transformation system derivative 
             self.y += (self.dt/self.tau)*self.dy    # transformation system  
             self.x += dx   # canonical system
-
+ 
             # storage
             self.S["ddy"][t] = self.ddy
             self.S["dy"][t] = self.dy
             self.S["y"][t] = self.y
             self.S["x"][t] = self.x
-            self.S["phi"][:,t] = phi
-
-    def lwr(self, target) :
-        '''
-        Locally weighted regression to learn the weights of 
-        the forcing component
-        '''
-
-        s = self.S["x"]*(self.g -  self.y0)
-        
-        # target forrcing component
-        ft = (self.tau**2)*target["ddy"] \
-                - self.alpha_ddy*(self.beta_ddy*(self.g - target["y"]) \
-                - self.tau*target["dy"])  
-
-        # bases of the whole x timeseries
-        phi =  self.S["phi"]
-
-        # locally weighted regression
-        for i,p in enumerate(phi):
-            w = np.diag(p)
-            self.theta[i] =  np.dot(s,np.dot(w, ft)) / np.dot(s, np.dot(w, s))
-
-
+            self.S["phi"][t,:] = phi
 
 if __name__ == "__main__" :
 
     
-    stime = 200
+    stime = 20
     dt = 0.01
-    period = 10*np.pi
-    x = np.linspace(0,1, stime+2)
-    t = (0.5*np.sin(x*period-np.pi/2.0) + 0.5)*(1-x) + x
-    t = t/t.max()
 
-    target = { 
-            "ddy": np.diff(np.diff(t))/(dt**2),
-            "dy":np.diff(t)[1:]/dt,
-            "y": t[2:] }
-
-    plt.close("all")
-
-    dmp = DMP(n=800, stime = stime, sigma = 0.0005, 
-            dt = dt, noise = True,
+    dmp = DMP(n=3, p=1, stime = stime, sigma = 0.1, 
+           dt = dt, noise = True,
             n_sigma = 0.005 )
-    dmp.rollout()
+    dmp.rollout(0)
 
-    plt.figure(figsize=(8,16))    
-    plt.subplot(211)
-    plt.title("before regression")
-    plt.plot(dmp.S["ddy"], c="red")
-    plt.plot(dmp.S["dy"], c="blue")
-    plt.plot(dmp.S["y"], c="black", lw=3)
-    plt.plot(dmp.S["x"], c="gray",lw=2)
-    plt.plot(target["y"], c="red", lw=3)
-    plt.plot([0,stime],[1,1], c="gray")
-    plt.plot([0,stime],[0,0], c="gray")
-    plt.ylim([-0.5,1.5])
+
     
-    dmp.lwr(target)
-    dmp.rollout()
-    
-    plt.subplot(212)
-    plt.title("after regression")
-    plt.plot(dmp.S["ddy"], c="green")
-    plt.plot(dmp.S["dy"], c="blue")
-    plt.plot(dmp.S["y"], c="black", lw=3)
-    plt.plot(target["y"], c="red", lw=3)
-    plt.plot([0,stime],[1,1], c="gray")
-    plt.plot([0,stime],[0,0], c="gray")
-    plt.ylim([-0.5,1.5])
-    
-    plt.show()

@@ -69,6 +69,9 @@ class BBO :
         """ Get num_rollouts samples from the current parameters mean
         """
         
+        if self.err > 1. :
+            self.decay_amp = 0.0
+        
         Sigma = self.sigma + self.decay_amp*np.exp(
             -self.epoch/(self.epochs * self.decay_period))
         # matrix of deviations from the parameters mean
@@ -161,6 +164,7 @@ class BBO :
 
 if __name__ == "__main__":
     
+    # consts
     dmp_num_theta = 10
     dmp_stime = 60
     dmp_dt = 0.3
@@ -184,6 +188,7 @@ if __name__ == "__main__":
     targety = np.hstack((targety, np.ones(dmp_stime - partial_stime)))
 
  
+    # plot target
     fig1 = plt.figure()
     ax01 = fig1.add_subplot(211)
     ax01.plot(targetx)
@@ -191,8 +196,10 @@ if __name__ == "__main__":
     ax02 = fig1.add_subplot(212)
     ax02.plot(targetx, targety)
 
+    # make a target list for the bbo object
     target = [targetx, targety]
     
+    # make a cost function for the bbo object
     def supervised_cost_func(rollouts):
         trgts = np.array(target)
         trgts = trgts.reshape(bbo_num_dmps, 1, dmp_stime)
@@ -206,15 +213,14 @@ if __name__ == "__main__":
               sigma_decay_amp=0.0, sigma_decay_period=0.1, 
               softmax=cost_softmax, cost_func=supervised_cost_func)
     
-
+    # prepare for iterations 
     costs = np.zeros(bbo_epochs)
     fig = plt.figure()
     ax = fig.add_subplot(111)
     line, = ax.plot(costs)
+    # iterate
     for t in range(bbo_epochs):
-        # iterate -------------
         rs,_ = bbo.iteration()
-        # ---------------------
         costs[t] = bbo.err
         line.set_ydata(costs)
         ax.relim()
@@ -222,10 +228,10 @@ if __name__ == "__main__":
         plt.pause(0.001)
     print
     
-    # test ----------------------------------
+    # test 
     rollouts,_ = bbo.iteration(explore=False)
-    # ---------------------------------------
-    
+
+    # plot test    
     fig2 = plt.figure()
     ax11 = fig2.add_subplot(211)
     ax11.plot(rs[0].T, lw=0.2, color="#220000")
