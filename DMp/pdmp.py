@@ -31,7 +31,6 @@ class DMP :
     def __init__(self, n=30, pdim=None, s=0, g=1, stime=200, dt=0.01,
             sigma=0.01, rng=None, noise=None, n_sigma=0.02) :
         """
-<<<<<<< HEAD:DMp/pdmp.py
         :param  n       Number of parameters of the forcing component
         :param  pdim    list of the bin number for each additional parameter
         :param  s       starting point
@@ -45,25 +44,7 @@ class DMP :
         :type   s       float
         :type   g       float
         :type   noise   bool    
-        :type   sigma   float    
-=======
-        :param n: Number of parameters of the forcing component
-        :param pdim: List of the bin number for each additional parameter
-	:param s: starting point
-        :param g: end point
-        :param stime: timesteps
-        :param dt: integration time
-        :param sigma: std dev of the gaussian bases
-        :param noise: add noise to the output
-        :param n_sigma: noise std dev
-        :type n: int
-	:type pdim: int
-        :type s: float
-        :type g: float
-        :type noise: bool    
-        :type sigma: float    
->>>>>>> f7644e943a3a40aba39b468fe59796fa948ed198:DMp/pDMp.py
-        
+        :type   sigma   float         
         """
         self.n = n
         self.s = s
@@ -146,7 +127,7 @@ class DMP :
               "phi": np.zeros([self.stime] + list(self.c.shape)) 
               }
     
-    def rollout(self, p) :
+    def rollout(self, p=None) :
         """ Performs a single episode of 'stime' timesteps
         
         :param p: current additional parameters
@@ -161,7 +142,10 @@ class DMP :
         :rtype: dict( str : np.array() )
         """
         
+        if p is None: p=[]
+        
         assert (len(p) + 1) == self.c.shape[1] 
+        
 
         # reset vars
         self.x = self.x0
@@ -210,19 +194,9 @@ if __name__ == "__main__" :
     stime = 20
     dt = 0.01
 
-<<<<<<< HEAD:DMp/pdmp.py
     dmp = DMP(n=3, pdim=[2,2,5], stime = stime, sigma = 0.1, 
            dt = dt, noise = True,
             n_sigma = 0.005 )
     dmp.rollout([0, 0.9, 0])
     
     print dmp.c
-=======
-    dmp = DMP(n=20, p=1, stime = stime, sigma = 0.01, 
-           dt = dt, noise = True)
-    dmp.rollout(0)
-    plt.plot(dmp.S["y"])
-    plt.show()
-
->>>>>>> f7644e943a3a40aba39b468fe59796fa948ed198:DMp/pDMp.py
-    
