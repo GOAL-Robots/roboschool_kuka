@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 import os
 
 def init_rng():
-    '''
-    Set a random number generator witha random seed
+    ''' Set a random number generator witha random seed
     '''
     seed = np.fromstring(os.urandom(4), dtype=np.uint32)[0]
     rng = np.random.RandomState(seed)
@@ -24,8 +23,7 @@ def ngrid(npts, mins, maxs):
     return sparse_grid
 
 class DMP :
-    """
-    implements a 1D parametrized dynamical movememt primitive
+    """ Implements a 1D dynamical movememt primitive
 
 
     """
@@ -33,6 +31,7 @@ class DMP :
     def __init__(self, n=30, pdim=None, s=0, g=1, stime=200, dt=0.01,
             sigma=0.01, rng=None, noise=None, n_sigma=0.02) :
         """
+<<<<<<< HEAD:DMp/pdmp.py
         :param  n       Number of parameters of the forcing component
         :param  pdim    list of the bin number for each additional parameter
         :param  s       starting point
@@ -47,6 +46,23 @@ class DMP :
         :type   g       float
         :type   noise   bool    
         :type   sigma   float    
+=======
+        :param n: Number of parameters of the forcing component
+        :param pdim: List of the bin number for each additional parameter
+	:param s: starting point
+        :param g: end point
+        :param stime: timesteps
+        :param dt: integration time
+        :param sigma: std dev of the gaussian bases
+        :param noise: add noise to the output
+        :param n_sigma: noise std dev
+        :type n: int
+	:type pdim: int
+        :type s: float
+        :type g: float
+        :type noise: bool    
+        :type sigma: float    
+>>>>>>> f7644e943a3a40aba39b468fe59796fa948ed198:DMp/pDMp.py
         
         """
         self.n = n
@@ -87,13 +103,7 @@ class DMP :
         self.alpha_ddy = 3.0*self.alpha_x 
         self.beta_ddy = self.alpha_ddy/4.0
 
-        # state storage
-        self.S = { "ddy": np.zeros(self.stime),
-              "dy": np.zeros(self.stime),
-              "y": np.zeros(self.stime),
-              "x": np.zeros(self.stime),
-              "phi": np.zeros([self.stime] + list(self.c.shape)) 
-              }
+        self.reset()
 
     def set_start(self, start):
         # PD params
@@ -104,16 +114,15 @@ class DMP :
 
 
     def get_bases(self, x, p=None):
-        """
-        Computes the bases of a state x
+        """ Computes the bases of a state x
 
         :param x: the current state of the canonical system
         :type x: float
         :param x: the current state of the additional parameters
         :type p: np.array(float)
 
-        :return an array of activations of the n bases
-        :rtype float
+        :return: an array of activations of the n bases
+        :rtype: float
         """
         
         
@@ -138,18 +147,18 @@ class DMP :
               }
     
     def rollout(self, p) :
-        """
-        Performs a single episode of 'stime' timesteps
+        """ Performs a single episode of 'stime' timesteps
         
-        :param p:   current additional parameters
-        
-        :return:    a dictionary with the timeseries of 
+        :param p: current additional parameters
+	    :type p: list(float)       
+
+        :return: a dictionary with the timeseries of 
                     ddy (acceleration), 
                     dy (speed), -
                     y (position),
                     x (time-setting decay,
                     phi (vector of bases activations)
-        :rtype:     dict( str : np.array() )
+        :rtype: dict( str : np.array() )
         """
         
         assert (len(p) + 1) == self.c.shape[1] 
@@ -167,25 +176,25 @@ class DMP :
             
             fc =  ( phi/phi.sum())
             fc *= self.x
-            fc *= (self.g - self.y0)            
-         
+            fc *= (self.g - self.y0)
+        
             # PD acceleration
             pd =  self.alpha_ddy*(self.beta_ddy*(self.g - self.y) - self.dy)  
-             
+            
             # increment of the transformation system
             self.ddy = (self.dt/self.tau)*(pd + np.dot(fc.ravel(), self.theta.ravel()))
  
             if self.noise :
                 self.ddy = self.ddy + self.rng.randn()*self.n_sigma
- 
+
             # increment of the canonical system
             dx = -(self.dt/self.tau)*self.alpha_x*self.x
- 
+
             # updates
             self.dy += self.ddy    # transformation system derivative 
             self.y += (self.dt/self.tau)*self.dy    # transformation system  
             self.x += dx   # canonical system
- 
+
             # storage
             self.S["ddy"][t] = self.ddy
             self.S["dy"][t] = self.dy
@@ -201,10 +210,19 @@ if __name__ == "__main__" :
     stime = 20
     dt = 0.01
 
+<<<<<<< HEAD:DMp/pdmp.py
     dmp = DMP(n=3, pdim=[2,2,5], stime = stime, sigma = 0.1, 
            dt = dt, noise = True,
             n_sigma = 0.005 )
     dmp.rollout([0, 0.9, 0])
     
     print dmp.c
+=======
+    dmp = DMP(n=20, p=1, stime = stime, sigma = 0.01, 
+           dt = dt, noise = True)
+    dmp.rollout(0)
+    plt.plot(dmp.S["y"])
+    plt.show()
+
+>>>>>>> f7644e943a3a40aba39b468fe59796fa948ed198:DMp/pDMp.py
     
