@@ -12,7 +12,7 @@ def rew_softmax(x, lmb):
     e = np.exp((x - np.max(x))/lmb)
     return e/sum(e)
 
-class BBO :
+class BBO(object) :
     "P^2BB: Policy Improvement through Black Vox Optimization"
     def __init__(self, num_params=10, 
                  dmp_stime=100, dmp_dt=0.1, dmp_sigma=0.1,

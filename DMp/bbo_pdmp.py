@@ -12,7 +12,7 @@ def rew_softmax(x, lmb):
     e = np.exp((x - np.max(x))/lmb)
     return e/sum(e)
 
-class BBO :
+class BBO(object) :
     "P^2BB: Policy Improvement through Black Vox Optimization"
     def __init__(self, num_params=10, bins_hparams=None, dmp_stime=100,
             dmp_dt=0.1, dmp_sigma=0.1, num_rollouts=20, num_dmps=1,
@@ -66,8 +66,7 @@ class BBO :
         
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
-        """
-        
+        """  
         if self.err > 1. :
             self.decay_amp = 0.0
         

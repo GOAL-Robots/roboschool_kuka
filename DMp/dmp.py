@@ -15,7 +15,7 @@ def init_rng():
 def gauss(x, c, s) :
     return np.exp( -(1/(2*s**2))*(x - c)**2  )
 
-class DMP :
+class DMP(object) :
     """ Implements a 1D dynamical movememt primitive
 
     tau*ddy = alpha_ddy*(beta_ddy*(g - y) -dy) + f

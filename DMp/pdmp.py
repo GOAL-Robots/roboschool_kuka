@@ -22,7 +22,7 @@ def ngrid(npts, mins, maxs):
     sparse_grid =  np.vstack([grid.ravel() for grid in  grids]).T 
     return sparse_grid
 
-class DMP :
+class DMP(object) :
     """ Implements a 1D dynamical movememt primitive
 
 
