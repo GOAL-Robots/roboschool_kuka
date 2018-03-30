@@ -154,19 +154,17 @@ class InlineTestPlotter:
             
         return tuple([self.fig] + self.plots.values())
     
-    def makeVideo(self, frames=2000):
+    def makeVideo(self, frames=2000, interval=20):
 
         def ani_step(frame): return self.step()
         self.ani = animation.FuncAnimation(self.fig, func=ani_step, 
-                                      frames=frames, interval=20,
-                                      blit=True)
-        
-        
+                frames=frames, interval=interval,
+                blit=True)
         return self.ani
     
     def save(self, filename="sim"):
         Writer = animation.writers['ffmpeg']
-        writer = Writer(fps=15, codec="h264", metadata=dict(artist='Me'), bitrate=1800)       
+        writer = Writer(fps=30, codec="h264", metadata=dict(artist='Me'), bitrate=1800)       
         self.ani.save('%s.avi' % filename, writer=writer)
       
 #------------------------------------------------------------------------------
