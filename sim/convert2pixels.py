@@ -7,6 +7,8 @@ def path2pixels(vertices, xlim, ylim, resize_img=None):
     
     xrng = xlim[1] - xlim[0] 
     yrng = ylim[1] - ylim[0] 
+    if resize_img is None:
+        resize_img = (xrng, yrng)
 
     x, y = np.meshgrid(np.arange(*xlim), np.arange(*ylim)) # make a canvas with coordinates
     x, y = x.flatten(), y.flatten()
@@ -14,12 +16,12 @@ def path2pixels(vertices, xlim, ylim, resize_img=None):
     p = Path(vertices) # make a polygon
     grid = p.contains_points(points)
 
-    img = 1.0*grid.reshape(xrng, yrng,order='F').T #pixels 
-    if resize_img is not None:
+    if np.any(grid==True):
+        img = 1.0*grid.reshape(xrng, yrng,order='F').T #pixels 
         img = resize(img, resize_img, mode='constant')
     else:
-        img = resize(img, (xrng, yrng), mode='constant')
-
+        img = np.zeros(resize_img)
+        
     return img
 
 if __name__ == "__main__":
@@ -28,5 +30,5 @@ if __name__ == "__main__":
     tupVerts=[(60,60), (80,60), (90,20),  (70,20), (60,60)]
     img = path2pixels(tupVerts, [50,100], [0,70], (30,30))
     plt.imshow(img)
-    plt.show()
+    lt.show()
 

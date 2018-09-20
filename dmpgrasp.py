@@ -1,7 +1,9 @@
+import matplotlib
+#matplotlib.use("Agg")
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from sim.Box2DSim import Box2DSim, InlineTestPlotter
+from sim.Box2DSim import Box2DSim, InlineTestPlotter, VisualSensor
 from DMp.dmp import DMP
 from DMp.bbo_pdmp import BBO, rew_softmax
 
@@ -22,14 +24,17 @@ bbo_sigma_decay_period = 1.0
 
 # define a callable with a single step of the simulation
 class Simulation:
-    def __init__(self, rollout):
+    def __init__(self, rollout, retina=False):
         """
         :param rollout: np.array(bbo_K, dmp_stime). A single rollout 
                         from which joint commands are taken
         :return: np.array(int). contacts
         """
         self.t = 0
-        self.rollout = rollout   
+        self.rollout = rollout  
+        self.has_retina = retina
+        self.retina = []
+        
     def __call__(self, sim):    
         """
         :param sim: Box2DSim. The simulator object
@@ -39,9 +44,15 @@ class Simulation:
         sim.move("Arm2_to_Arm3", -0.5*np.pi*self.rollout[2, self.t])
         sim.move("Arm3_to_Claw10", -0.5*np.pi*(1-self.rollout[3, self.t]))
         sim.move("Arm3_to_Claw20", 0.5*np.pi*(1-self.rollout[3, self.t]))
+        
         # do the movement
         sim.step()
-        
+        if self.has_retina == True:
+            # sensors
+            vsensor = VisualSensor(sim)
+            img = vsensor.step((0,30), (0,30), (100,100))
+            self.retina.append(img)
+
         # get contacts form the claws (they are sensors)
         contacts = [
             sim.contacts("claw10", "Object"),
@@ -84,12 +95,25 @@ rs = np.array(rs)
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(111)
 ax1.plot(rew)
-plt.show()
+fig1.canvas.draw()
+plt.savefig("utility.png")
 
 # create the simulator
 inline_sim = Box2DSim("body2d.json")
+sim_call = Simulation(np.squeeze(rs[:,0,:]), retina=True)
 # create the plot environment
-plotter = InlineTestPlotter(inline_sim, sim_step=Simulation(np.squeeze(rs[:,0,:])))
+plotter = InlineTestPlotter(inline_sim, sim_step=sim_call)
 # run the simulation so to produce the video
 plotter.makeVideo(frames=dmp_stime-2, interval=1)
 plotter.save()
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+implot = ax.imshow(np.zeros((10,10)), 
+        vmin=0, vmax=1, interpolation=None)
+for i,img in enumerate(sim_call.retina):
+    implot.set_data(img)
+    fig.canvas.draw()
+    plt.savefig("img%04d.png"%i)
+
+

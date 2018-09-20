@@ -24,8 +24,6 @@ def ngrid(npts, mins, maxs):
 
 class DMP(object) :
     """ Implements a 1D dynamical movememt primitive
-
-
     """
 
     def __init__(self, n=30, pdim=None, s=0, g=1, stime=200, dt=0.01,

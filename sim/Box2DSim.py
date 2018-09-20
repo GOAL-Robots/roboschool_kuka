@@ -9,7 +9,7 @@ class  Box2DSim(object):
     """ 2D physics using box2d and a json conf file
     """
 
-    def __init__(self, world_file, dt=1/80.0, vel_iters =6, pos_iters=2):
+    def __init__(self, world_file, dt=1/80.0, vel_iters=6, pos_iters=2):
         """ 
 
             :param world_file: the json file from which all objects are created
@@ -23,7 +23,7 @@ class  Box2DSim(object):
 
             :param vel_iters: for the position constraint solver.
             :type vel_iters: int
-
+            
         """
 
         world, bodies, joints = json2d.createWorldFromJson(world_file)
@@ -35,7 +35,7 @@ class  Box2DSim(object):
         self.joints = joints
         self.joint_pids = { ("%s" % k): PID(dt=self.dt) 
                 for k in self.joints.keys() }
-
+        
     def contacts(self, bodyA, bodyB):
         
         contacts = 0
@@ -57,6 +57,49 @@ class  Box2DSim(object):
 
         self.world.Step(self.dt, self.vel_iters, self.pos_iters)
         
+#------------------------------------------------------------------------------ 
+#------------------------------------------------------------------------------ 
+
+from convert2pixels import path2pixels
+
+class VisualSensor:
+    """ Compute the retina state at each ste of simulation
+    """
+
+    def __init__(self, sim):
+        """
+            :param sim: a simulator object
+            :type sim: Box2DSim
+        """
+
+        self.sim = sim
+
+    def step(self, xlim, ylim, resize=None) :
+        """ Run a single simulator step
+
+            :param xlim: x boundaries of the retina
+            :param ylim: y boundaries of the retina
+            :param resize: x and y rescaling
+
+            :retun: a rescaled retina  state
+        """
+   
+        if resize is None:
+            xrng = xlim[1] - xlim[0] 
+            yrng = ylim[1] - ylim[0] 
+            resize = (xrng, yrng)
+        retina = np.zeros(resize)
+        for key in self.sim.bodies.keys():
+            body = self.sim.bodies[key]
+            vercs = np.vstack(body.fixtures[0].shape.vertices)
+            vercs = vercs[range(len(vercs))+[0]]
+            data = [body.GetWorldPoint(vercs[x]) 
+                for x in range(len(vercs))]
+            retina += path2pixels(data, xlim, ylim,
+                    resize_img=resize)
+
+        return retina
+
 #------------------------------------------------------------------------------ 
 #------------------------------------------------------------------------------ 
 
@@ -97,7 +140,7 @@ class TestPlotter:
         for key, body_plot in self.plots.items():
             body = self.sim.bodies[key]
             vercs = np.vstack(body.fixtures[0].shape.vertices)
-            vercs = vercs[ np.hstack([np.arange(len(vercs)), 0]) ]
+            vercs = vercs[range(len(vercs))+[0]]
             data = np.vstack([ body.GetWorldPoint(vercs[x]) 
                 for x in range(len(vercs))])
             body_plot.set_data(*data.T)
@@ -147,7 +190,7 @@ class InlineTestPlotter:
         for key, body_plot in self.plots.items():
             body = self.sim.bodies[key]
             vercs = np.vstack(body.fixtures[0].shape.vertices)
-            vercs = vercs[ np.hstack([np.arange(len(vercs)), 0]) ]
+            vercs = vercs[range(len(vercs))+[0]]
             data = np.vstack([ body.GetWorldPoint(vercs[x]) 
                 for x in range(len(vercs))])
             body_plot.set_data(*data.T)

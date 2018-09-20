@@ -7,7 +7,7 @@ import os
 def init_rng():
     ''' Set a random number generator witha random seed
     '''
-    seed = np.fromstring(os.urandom(4), dtype=np.uint32)[0]
+    seed = np.frombuffer(os.urandom(4), dtype=np.uint32)[0]
     rng = np.random.RandomState(seed)
     
     return rng, seed
@@ -26,7 +26,8 @@ class DMP(object) :
 
     """
 
-    def __init__(self, n = 30, s = 0, g = 1, stime = 200, dt = 0.01, sigma = 0.01, rng = None, noise = None, n_sigma = 0.02) :
+    def __init__(self, n = 30, s = 0, g = 1, stime = 200, dt = 0.01, 
+            sigma = 0.01, rng = None, noise = None, n_sigma = 0.02) :
         """
         :param n: Number of parameters of the forcing component
         :param s: starting point
@@ -157,6 +158,8 @@ class DMP(object) :
             self.S["y"][t] = self.y
             self.S["x"][t] = self.x
             self.S["phi"][:,t] = phi
+        
+        return self.S
 
     def lwr(self, target) :
         ''' Locally weighted regression to learn the weights of 
