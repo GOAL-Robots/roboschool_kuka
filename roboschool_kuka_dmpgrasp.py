@@ -36,7 +36,7 @@ class Simulation:
         action = np.zeros(9)
         action[[1, 3, 4, 7, 8]] = ctrl_joints*np.pi
         
-        do the movement
+        # do the movement
         state, r, done, info_ = self.env.step(action)
 
         if self.plot:
