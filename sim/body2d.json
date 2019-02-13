@@ -20,7 +20,6 @@
                 {
                     "name": "", 
                     "density": 1, 
-                    "group_index": 0,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -53,7 +52,6 @@
                 {
                     "name": "", 
                     "density": 1, 
-                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -85,7 +83,6 @@
                 {
                     "name": "",
                     "density": 1, 
-                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -117,7 +114,6 @@
                 {
                     "name": "",
                     "density": 1, 
-                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
@@ -139,30 +135,33 @@
         },
         {
             "angle": 0.0, 
-            "name": "claw10", 
+            "name": "clow1", 
             "position": {
                 "y": 23.0, 
-                "x": 4.5
+                "x": 4.0
             }, 
             "type": 2, 
             "fixture": [
                 {
                     "name": "",
                     "density": 1, 
-                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
-                                1.5, 
-                                1.5, 
-                                -1.5, 
-                                -1.5
+                                2.5, 
+                                2.5, 
+                                0.0,
+                                0,0,
+                                -2.5, 
+                                -2.5
                             ], 
                             "x": [
-                                0.0, 
+                                -0.1, 
+                                0.1, 
                                 1.5,
-                                0.0,
-                                -1.0
+                                1.5,
+                                0.1, 
+                                -0.1
                             ]
                         }
                     }
@@ -171,107 +170,45 @@
         },
         {
             "angle": 0.0, 
-            "name": "claw20", 
+            "name": "clow2", 
             "position": {
                 "y": 23.0, 
-                "x": 3.5
+                "x": 4.0
             }, 
             "type": 2, 
             "fixture": [
                 {
                     "name": "",
                     "density": 1, 
-                    "group_index": 2,
                     "polygon": {
                         "vertices": {
                             "y": [
-                                1.5, 
-                                1.5, 
-                                -1.5, 
-                                -1.0
+                                2.5, 
+                                2.5, 
+                                0.0,
+                                0,0,
+                                -2.5, 
+                                -2.5
                             ], 
                             "x": [
-                                0.0, 
-                                -1.5, 
-                                0.0,
-                                1.0
+                                -0.1, 
+                                0.1, 
+                                -1.5,
+                                -1.5,
+                                0.1, 
+                                -0.1
                             ]
                         }
                     }
                 }
             ]
         },
-        {
-            "angle": 0.0, 
-            "name": "claw11", 
-            "position": {
-                "y": 24.5, 
-                "x": 4.5
-            }, 
-            "type": 2, 
-            "fixture": [
-                {
-                    "name": "",
-                    "group_index": 2,
-                    "density": 1, 
-                    "polygon": {
-                        "vertices": {
-                            "y": [
-                                1.5, 
-                                1.5, 
-                                -1.5, 
-                                -1.5
-                            ], 
-                            "x": [
-                                -1.0, 
-                                0.0,
-                                1.5,
-                                0.0
-                            ]
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "angle": 0.0, 
-            "name": "claw21", 
-            "position": {
-                "y": 24.5, 
-                "x": 3.5
-            }, 
-            "type": 2, 
-            "fixture": [
-                {
-                    "name": "",
-                    "density": 1, 
-                    "group_index": 2,
-                    "polygon": {
-                        "vertices": {
-                            "y": [
-                                1.5, 
-                                1.5, 
-                                -1.5, 
-                                -1.5
-                            ], 
-                            "x": [
-                                1.0,
-                                0.0,
-                                -1.5, 
-                                0.0
-                            ]
-                        }
-                    }
-                }
-            ]
-        },
-
         {
             "angle": 0.0, 
             "name": "Object", 
             "position": {
                 "y": 15.0, 
-                "x": 15.0
+                "x": 9.0
             }, 
             "type": 2, 
             "fixture": [
@@ -346,7 +283,7 @@
             "enableMotor": true 
         },
         {
-            "name": "Arm3_to_Claw10", 
+            "name": "Arm3_to_Clow1", 
             "type": "revolute",             
             "bodyA": 3, 
             "bodyB": 4, 
@@ -354,14 +291,14 @@
             "refAngle": 0, 
             "collideConnected": false, 
             "maxMotorTorque": 10000, 
-            "enableLimit": false, 
+            "enableLimit": true, 
             "motorSpeed": 0, 
             "anchorA": {
-                "y": 3.4, 
-                "x": 1
+                "y": 3.0, 
+                "x": 0.0
             }, 
             "anchorB": {
-                "y": -1.7, 
+                "y": -2.5, 
                 "x": 0.0
             }, 
             "upperLimit": 3.14, 
@@ -369,7 +306,7 @@
             "enableMotor": true 
         },
         {
-            "name": "Arm3_to_Claw20", 
+            "name": "Arm3_to_Clow2", 
             "type": "revolute",             
             "bodyA": 3, 
             "bodyB": 5, 
@@ -377,67 +314,20 @@
             "refAngle": 0, 
             "collideConnected": false, 
             "maxMotorTorque": 10000, 
-            "enableLimit": false, 
-            "motorSpeed": 0, 
-            "anchorA": {
-                "y": 3.4, 
-                "x": -1
-            }, 
-            "anchorB": {
-                "y": -1.7, 
-                "x": 0.0
-            }, 
-            "upperLimit": 3.14, 
-            "lowerLimit": -3.14,             
-            "enableMotor": true 
-        },
-        {
-            "name": "Claw10_to_Claw11", 
-            "type": "revolute",             
-            "bodyA": 4, 
-            "bodyB": 6, 
-            "jointSpeed": 0, 
-            "refAngle": 0, 
-            "collideConnected": false, 
-            "maxMotorTorque": 10000, 
             "enableLimit": true, 
             "motorSpeed": 0, 
             "anchorA": {
-                "y": 1.5, 
+                "y": 3.0, 
                 "x": 0.0
             }, 
             "anchorB": {
-                "y": -1.5, 
+                "y": -2.5, 
                 "x": 0.0
             }, 
             "upperLimit": 3.14, 
             "lowerLimit": -3.14,             
             "enableMotor": true 
         },
-        {
-            "name": "Claw20_to_Claw21", 
-            "type": "revolute",             
-            "bodyA": 5, 
-            "bodyB": 7, 
-            "jointSpeed": 0, 
-            "refAngle": 0, 
-            "collideConnected": false, 
-            "maxMotorTorque": 10000, 
-            "enableLimit": true, 
-            "motorSpeed": 0, 
-            "anchorA": {
-                "y": 1.5, 
-                "x": 0.0
-            }, 
-            "anchorB": {
-                "y": -1.5, 
-                "x": 0.0
-            }, 
-            "upperLimit": 3.14, 
-            "lowerLimit": -3.14,             
-            "enableMotor": true 
-        },
-
         {
             "name": "Ground_to_Arm1", 
             "type": "revolute",             
