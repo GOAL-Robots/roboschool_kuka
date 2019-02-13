@@ -1,8 +1,8 @@
 import sys
 import numpy as np
-from pdmp import DMP
+from .pdmp import DMP
 import matplotlib.pyplot as plt
-import bbo_pdmp as bbo
+from . import bbo_pdmp as bbo
 np.set_printoptions(precision=3, suppress=True)
 
 class BBO_param(bbo.BBO):

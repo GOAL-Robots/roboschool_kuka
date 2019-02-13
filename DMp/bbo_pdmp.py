@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from pdmp import DMP
+from .pdmp import DMP
 import matplotlib.pyplot as plt
 np.set_printoptions(precision=3, suppress=True)
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
         ax.relim()
         ax.autoscale_view()
         plt.pause(0.001)
-    print
+    print()
     
     # test 
     rollouts,_ = bbo.iteration(explore=False)

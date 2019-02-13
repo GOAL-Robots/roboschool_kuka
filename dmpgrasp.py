@@ -1,5 +1,5 @@
 import matplotlib
-#matplotlib.use("Agg")
+matplotlib.use("Agg")
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -7,20 +7,6 @@ from sim.Box2DSim import Box2DSim, InlineTestPlotter, VisualSensor
 from DMp.dmp import DMP
 from DMp.bbo_pdmp import BBO, rew_softmax
 
-
-dmp_num_theta = 20
-dmp_stime = 100
-dmp_dt = 0.3
-dmp_sigma = 0.1
-
-
-bbo_lmb = 0.5
-bbo_epochs = 80
-bbo_K = 30
-bbo_num_dmps = 4
-bbo_sigma = 1.0e-06
-bbo_sigma_decay_amp = 0.2
-bbo_sigma_decay_period = 1.0
 
 # define a callable with a single step of the simulation
 class Simulation:
@@ -76,44 +62,59 @@ def rew_func(rollouts):
             rews[k, t] = np.sum(simulate_step(sim))
     return rews.reshape(1, *rews.shape)
 
-# the BBO object
-bbo = BBO(num_params=dmp_num_theta, 
-          dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
-          num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
-          sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
-          sigma_decay_amp=bbo_sigma_decay_amp, 
-          sigma_decay_period=bbo_sigma_decay_period, 
-          softmax=rew_softmax, cost_func=rew_func)
+if __name__ == "__main__":
 
-rew = np.zeros(bbo_epochs)
-for k in range(bbo_epochs):
-    rs, rew[k] = bbo.iteration()
-    if k % 10 == 0 or k == bbo_epochs -1 : print k
-rs,_ = bbo.iteration(explore=False)
+    dmp_num_theta = 30
+    dmp_stime = 100
+    dmp_dt = 0.3
+    dmp_sigma = 0.3
 
-rs = np.array(rs)
-fig1 = plt.figure()
-ax1 = fig1.add_subplot(111)
-ax1.plot(rew)
-fig1.canvas.draw()
-plt.savefig("utility.png")
+    bbo_lmb = 0.5
+    bbo_epochs = 200
+    bbo_K = 30
+    bbo_num_dmps = 4
+    bbo_sigma = 1.0e-06
+    bbo_sigma_decay_amp = 0.2
+    bbo_sigma_decay_period = 1.0
 
-# create the simulator
-inline_sim = Box2DSim("body2d.json")
-sim_call = Simulation(np.squeeze(rs[:,0,:]), retina=True)
-# create the plot environment
-plotter = InlineTestPlotter(inline_sim, sim_step=sim_call)
-# run the simulation so to produce the video
-plotter.makeVideo(frames=dmp_stime-2, interval=1)
-plotter.save()
+    # the BBO object
+    bbo = BBO(num_params=dmp_num_theta, 
+            dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
+            num_rollouts=bbo_K, num_dmps=bbo_num_dmps,
+            sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
+            sigma_decay_amp=bbo_sigma_decay_amp, 
+            sigma_decay_period=bbo_sigma_decay_period, 
+            softmax=rew_softmax, cost_func=rew_func)
 
-fig = plt.figure()
-ax = fig.add_subplot(111)
-implot = ax.imshow(np.zeros((10,10)), 
-        vmin=0, vmax=1, interpolation=None)
-for i,img in enumerate(sim_call.retina):
-    implot.set_data(img)
-    fig.canvas.draw()
-    plt.savefig("img%04d.png"%i)
+    rew = np.zeros(bbo_epochs)
+    for k in range(bbo_epochs):
+        rs, rew[k] = bbo.iteration()
+        if k % 10 == 0 or k == bbo_epochs -1 : print k
+    rs,_ = bbo.iteration(explore=False)
+
+    rs = np.array(rs)
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(111)
+    ax1.plot(rew)
+    fig1.canvas.draw()
+    plt.savefig("utility.png")
+
+    # create the simulator
+    inline_sim = Box2DSim("body2d.json")
+    sim_call = Simulation(np.squeeze(rs[:,0,:]), retina=False)
+    # create the plot environment
+    plotter = InlineTestPlotter(inline_sim, sim_step=sim_call)
+    # run the simulation so to produce the video
+    plotter.makeVideo(frames=dmp_stime-2, interval=1)
+    plotter.save()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    implot = ax.imshow(np.zeros((10,10)), 
+            vmin=0, vmax=1, interpolation=None)
+    for i,img in enumerate(sim_call.retina):
+        implot.set_data(img)
+        fig.canvas.draw()
+        plt.savefig("img%04d.png"%i)
 
 

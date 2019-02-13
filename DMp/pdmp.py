@@ -151,7 +151,7 @@ class DMP(object) :
         self.dy = 0
         self.ddy = 0
 
-        for t in xrange(self.stime):
+        for t in range(self.stime):
 
             # forcing component
             phi = self.get_bases(self.x, p)
@@ -197,4 +197,4 @@ if __name__ == "__main__" :
             n_sigma = 0.005 )
     dmp.rollout([0, 0.9, 0])
     
-    print dmp.c
+    print((dmp.c))

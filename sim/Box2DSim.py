@@ -1,5 +1,6 @@
 import JsonToPyBox2D as json2d
 from PID import PID
+import time
 import sys
 
 #------------------------------------------------------------------------------ 
@@ -9,7 +10,7 @@ class  Box2DSim(object):
     """ 2D physics using box2d and a json conf file
     """
 
-    def __init__(self, world_file, dt=1/80.0, vel_iters=6, pos_iters=2):
+    def __init__(self, world_file, dt=1/120.0, vel_iters=6, pos_iters=2):
         """ 
 
             :param world_file: the json file from which all objects are created
@@ -40,8 +41,9 @@ class  Box2DSim(object):
         
         contacts = 0
         for ce in self.bodies[bodyA].contacts:
-            if ce.contact.fixtureB.body  == self.bodies[bodyB]:
-                contacts += 1
+            if ce.contact.touching is True:
+                if ce.contact.fixtureB.body  == self.bodies[bodyB]:
+                    contacts += 1
                 
         return contacts
     
@@ -57,6 +59,7 @@ class  Box2DSim(object):
 
         self.world.Step(self.dt, self.vel_iters, self.pos_iters)
         
+
 #------------------------------------------------------------------------------ 
 #------------------------------------------------------------------------------ 
 
@@ -100,6 +103,7 @@ class VisualSensor:
 
         return retina
 
+
 #------------------------------------------------------------------------------ 
 #------------------------------------------------------------------------------ 
 
@@ -113,14 +117,19 @@ class TestPlotter:
      
     """
 
-    def __init__(self, sim):
+    def __init__(self, sim, sim_step):
         """
             :param sim: a simulator object
             :type sim: Box2DSim
-        """
+            
+            :param sim_step: a function defining a single step of simulation
+            :type sim_step: callable object
+      """
 
         self.sim = sim
-
+        self.sim_step = sim_step
+ 
+        self._last_screen_update = time.time() 
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, aspect="equal")
         self.plots = dict()
@@ -136,14 +145,22 @@ class TestPlotter:
     def step(self) :
         """ Run a single simulator step
         """
+        
+        self.sim_step(self.sim)
                
-        for key, body_plot in self.plots.items():
-            body = self.sim.bodies[key]
-            vercs = np.vstack(body.fixtures[0].shape.vertices)
-            vercs = vercs[range(len(vercs))+[0]]
-            data = np.vstack([ body.GetWorldPoint(vercs[x]) 
-                for x in range(len(vercs))])
-            body_plot.set_data(*data.T)
+        t = time.time()
+        if t - self._last_screen_update > 1 / 25.0:
+            self._last_screen_update = t 
+            
+            for key, body_plot in self.plots.items():
+                body = self.sim.bodies[key]
+                vercs = np.vstack(body.fixtures[0].shape.vertices)
+                vercs = vercs[range(len(vercs))+[0]]
+                data = np.vstack([ body.GetWorldPoint(vercs[x]) 
+                    for x in range(len(vercs))])
+                body_plot.set_data(*data.T)
+            
+            self.fig.canvas.draw()
 
 #------------------------------------------------------------------------------ 
 
@@ -167,6 +184,7 @@ class InlineTestPlotter:
         self.sim = sim
         self.sim_step = sim_step
  
+        self._last_screen_update = time.time() 
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, aspect="equal")
         self.plots = dict()
@@ -186,7 +204,7 @@ class InlineTestPlotter:
         """
         
         self.sim_step(self.sim)
- 
+
         for key, body_plot in self.plots.items():
             body = self.sim.bodies[key]
             vercs = np.vstack(body.fixtures[0].shape.vertices)
@@ -194,7 +212,8 @@ class InlineTestPlotter:
             data = np.vstack([ body.GetWorldPoint(vercs[x]) 
                 for x in range(len(vercs))])
             body_plot.set_data(*data.T)
-            
+        self.fig.canvas.draw()
+        
         return tuple([self.fig] + self.plots.values())
     
     def makeVideo(self, frames=2000, interval=20):
@@ -214,32 +233,57 @@ class InlineTestPlotter:
 #------------------------------------------------------------------------------ 
 
 if __name__ == "__main__":
-    
-    is_inline = True
+   
+    """
+    --------------------------------
+    Body names:  
+
+                Base,
+                Arm1, 
+                Arm2, 
+                Arm3, 
+                claw10, 
+                claw20, 
+                claw11, 
+                claw21,
+                Object
+
+    Joint names:  
+
+                Arm1_to_Arm2, 
+                Arm2_to_Arm3, 
+                Arm3_to_Claw10, 
+                Arm3_to_Claw20, 
+                Claw10_to_Claw11, 
+                Claw20_to_Claw21, 
+                Ground_to_Arm1
+    --------------------------------
+    """
+
+    is_inline = False 
     plt.ion()
-    
+    sim = Box2DSim("arm.json", dt= 1/120.)
+        
+    def step(sim):
+        sim.move("Arm1_to_Arm2", -np.pi*1/3.)
+        sim.move("Arm2_to_Arm3", -np.pi*1/3.)
+        sim.move("Arm3_to_Claw10", -np.pi/4.)
+        sim.move("Arm3_to_Claw20", np.pi/4.) 
+        sim.step()  
+
     if is_inline == True:
-        inline_sim = Box2DSim("body2d.json")
-         
-        def step(sim):
-            sim.move("Arm1_to_Arm2", -np.pi/2.)
-            sim.step()
-             
-        plotter = InlineTestPlotter(inline_sim, sim_step=step)
+        inline_sim = Box2DSim("arm.json")
+        inline_sim.step = step
+                      
+        plotter = InlineTestPlotter(sim, sim_step=step)
         plotter.makeVideo()
         plotter.save()
      
     elif is_inline == False:
-        inline_sim = Box2DSim("body2d.json")
-         
-        def step(sim):
-            sim.move("Arm1_to_Arm2", -np.pi/2.)
-            sim.step()
              
-        plotter = InlineTestPlotter(inline_sim, sim_step=step)
+        plotter = TestPlotter(sim, sim_step=step)
         for t in range(1000):
             plotter.step()
-            plt.pause(0.00001)
+            plt.show()
+            time.sleep(0.0005)
 
-
-   

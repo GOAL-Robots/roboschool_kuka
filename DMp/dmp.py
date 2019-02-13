@@ -94,7 +94,7 @@ class DMP(object) :
         :rtype: float
         """
         phi = np.array([ gauss(x, self.c[i], self.sigma) 
-            for i in xrange(self.n) ])
+            for i in range(self.n) ])
 
         return phi
 
@@ -127,7 +127,7 @@ class DMP(object) :
         self.dy = 0
         self.ddy = 0
 
-        for t in xrange(self.stime):
+        for t in range(self.stime):
 
             # forcing component
             phi = self.get_bases(self.x)
