@@ -139,8 +139,8 @@ if __name__ == "__main__":
     rollout_0 = np.squeeze(rollouts[:,0,:])
 
     # run the simulator on first episode of last iteration
-    simulate_step = Simulation(rollout_0,  path="frames/lasts", env,
-            plot=SIM_PLOT, save=True)
+    simulate_step = Simulation(rollout_0, env,
+            path="frames/lasts", plot=SIM_PLOT, save=True)
     for t in range(dmp_stime): 
         simulate_step()
 
