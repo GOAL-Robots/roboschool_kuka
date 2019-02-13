@@ -67,11 +67,12 @@ class rew_func:
 
         n_joints, n_episodes, timesteps = rollouts.shape 
 
-        rews = np.zeros([n_joints, timesteps])
-        for episode in range(episodes):
+        rews = np.zeros([n_episodes, timesteps])
+        for episode in range(n_episodes):
             
             # simulate with the current joint trajectory to read rewards
-            simulate_step = Simulation(np.squeeze(rollouts[:,episode,:]), self.env, plot=PLOT )
+            simulate_step = Simulation(np.squeeze(rollouts[:,episode,:]), 
+                    self.env, plot=False)
             for t in range(timesteps):
                 rews[episode, t] = np.sum(simulate_step())
             rew_mean = np.mean(rews[episode, t]) 
