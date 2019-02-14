@@ -30,31 +30,41 @@ kill_session() {
     for ses in $sessions;    
     do      
         echo "   killing session $ses" 
-        screen -S "${SESSION}" -X quit &> /dev/null   
+        screen -S "${SESSION}" -X quit &> /dev/null || true 
     done;
-    killall -9 Xvfb &> /dev/null || true
     screen -wipe &> /dev/null || true 
     echo "Done."
 }
 
+kill_xvfb() {
+    killall -9 Xvfb &> /dev/null || true
+} 
+
+
 # init the screen session
 init_screen() {
-    kill_session  
+
+    kill_session
     sleep 3
     screen -dmS $SESSION
 }
 
 # :param $1: title of the window
 prepare_window() {
+    
     title=$1
     
+    echo "Prepare $title in $SESSION:"
+
     screen -S $SESSION -X screen
     sleep 0.1
     screen -S $SESSION -X title $title 
     sleep 0.1
     screen -S $SESSION -X -p $title stuff "touch /tmp/${title}_prepared;\n"
-    while [[ ! -f "/tmp/${title}_prepared" ]]; do echo "Opening window for ${title}..."; sleep 0.1; done
+    while [[ ! -f "/tmp/${title}_prepared" ]]; do echo "    Opening window ${title}..."; sleep 0.1; done
     rm -f /tmp/${title}_prepared
+    echo "window ${title} opened."
+    sleep 0.1
 }
 
 # :param $@: list of the windows to display in the current terminal
@@ -114,18 +124,18 @@ run_script() {
     sleep 0.01
     exec_on_window_no_log $sim "cd simulations/$sim"
     sleep 0.01
-    exec_on_window_no_log $sim "DISPLAY=$XORG_DISPLAY vglrun python $SCRIPTPATH/roboschool_kuka_dmpgrasp.py"
+    exec_on_window_no_log $sim "export DISPLAY=$XORG_DISPLAY"
+    sleep 0.01 
+    exec_on_window_no_log $sim "vglrun python $SCRIPTPATH/roboschool_kuka_dmpgrasp.py"
     #exec_on_window_no_log $sim "python $SCRIPTPATH/roboschool_kuka_dmpgrasp.py"
     sleep 0.1
 }
 
-
-
-
 # prepare screen session
+kill_xvfb
 init_screen
 echo ----
-
+sleep 0.1
 prepare_window xvfb
 
 for x in $(seq $START $((START + N_SIMS - 1))); do
@@ -133,9 +143,37 @@ for x in $(seq $START $((START + N_SIMS - 1))); do
 done
 
 while [ "$(count_sessions)" -lt $N_SIMS ]; do sleep 0.1;  done     
-
-exec_on_window_no_log xvfb "Xvfb $XORG_DISPLAY -screen 0 800x600x24"
+sleep 0.1
+exec_on_window_no_log xvfb "Xvfb $XORG_DISPLAY -screen 0 1920x1200x24 -shmem &"
+sleep 0.1
 
 for x in $(seq $START $((START + N_SIMS - 1))); do
     run_script sim${x}
 done
+
+sleep 1
+
+SESSION=video
+
+# prepare screen session
+init_screen 1
+echo ----
+sleep 0.1
+
+prepare_window mkvideo
+prepare_window jupyter
+
+while [ "$(count_sessions)" -lt 2 ]; do sleep 0.1;  done     
+
+exec_on_window_no_log mkvideo "cd ${HOME}/tmp/simulations"
+exec_on_window_no_log mkvideo '
+    while [[ true ]]; do
+        for d in \$(find -type d| grep "sim[0-9]\\+\$"); do
+            echo \$d
+            convert -loop 0 -delay 5 \$(find \$d/frames/bests/ | grep jpeg| sort -n) \${d}.gif;
+        done
+        sleep 30
+    done'
+exec_on_window_no_log jupyter "cd ${HOME}/tmp/simulations"
+exec_on_window_no_log jupyter "jupyter-notebook"
+

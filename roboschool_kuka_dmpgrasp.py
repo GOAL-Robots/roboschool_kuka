@@ -34,8 +34,9 @@ class Simulation:
         # we control only few joints
         ctrl_joints = self.rollout[:, self.t]
         action = np.zeros(9)
-        action[[1, 3, 4, 7, 8]] = ctrl_joints*np.pi
-        
+        action[[0, 2, 5, 6]] = -(ctrl_joints[[0, 2, 5, 6]])*np.pi
+        action[[1, 3, 4]] = ctrl_joints[[1, 3, 4]]*np.pi
+        action[[7, 8]] = ctrl_joints[[7, 8]]*np.pi
         # do the movement
         state, r, done, info_ = self.env.step(action)
 
@@ -103,18 +104,18 @@ if __name__ == "__main__":
     for f in files:
         os.remove(f)
 
-    dmp_num_theta = 30
-    dmp_stime = 100
-    dmp_dt = 0.3
-    dmp_sigma = 0.3
+    dmp_num_theta = 20
+    dmp_stime = 60
+    dmp_dt = 0.1
+    dmp_sigma = 0.5
 
-    bbo_lmb = 0.5
-    bbo_epochs = 1000
-    bbo_episodes = 30
-    bbo_num_dmps = 5
-    bbo_sigma = 1.0e-06
-    bbo_sigma_decay_amp = 0.2
-    bbo_sigma_decay_period = 1.0
+    bbo_lmb = 0.8
+    bbo_epochs = 4000
+    bbo_episodes = 40
+    bbo_num_dmps = 9
+    bbo_sigma = 1.0e-08
+    bbo_sigma_decay_amp = 20.0
+    bbo_sigma_decay_period = 0.5
 
     env = gym.make("RoboschoolKuka-v0")
     env.unwrapped.set_eyeEnable(False)
@@ -135,22 +136,23 @@ if __name__ == "__main__":
     for k in range(bbo_epochs):
         rollouts, rew[k] = bbo.iteration()
         print("{:#4d} {:6.2f}".format(k, rew[k]))
-    rollouts,_ = bbo.iteration(explore=False)
-    rollouts = np.array(rollouts)
-    rollout_0 = np.squeeze(rollouts[:,0,:])
+        
+        if k%10 == 0 or k == bbo_epochs -1:
+            rollouts = np.array(rollouts)
+            rollout_0 = np.squeeze(rollouts[:,0,:])
 
-    # run the simulator on first episode of last iteration
-    simulate_step = Simulation(rollout_0, env,
-            path="frames/lasts", plot=SIM_PLOT, save=True)
-    for t in range(dmp_stime): 
-        simulate_step()
+            # run the simulator on first episode of last iteration
+            simulate_step = Simulation(rollout_0, env,
+                    path="frames/lasts", plot=SIM_PLOT, save=True)
+            for t in range(dmp_stime): 
+                simulate_step()
 
-    # run the simulator on best rollout
-    if rew_func.best_rollout is not None:
-        simulate_step = Simulation(rew_func.best_rollout, env, 
-                path="frames/bests",  plot=SIM_PLOT, save=True)
-        for t in range(dmp_stime): 
-            simulate_step()
+            # run the simulator on best rollout
+            if rew_func.best_rollout is not None:
+                simulate_step = Simulation(rew_func.best_rollout, env, 
+                        path="frames/bests",  plot=SIM_PLOT, save=True)
+                for t in range(dmp_stime): 
+                    simulate_step()
 
     # save the plot with reward history
     fig = plt.figure(figsize=(8, 6))
