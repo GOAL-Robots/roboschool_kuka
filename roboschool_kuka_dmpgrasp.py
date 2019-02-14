@@ -154,9 +154,9 @@ if __name__ == "__main__":
                 for t in range(dmp_stime): 
                     simulate_step()
 
-    # save the plot with reward history
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111)
-    ax.plot(rew)
-    fig.savefig("frames/rew.png")
+            # save the plot with reward history
+            fig = plt.figure(figsize=(8, 6))
+            ax = fig.add_subplot(111)
+            ax.plot(rew)
+            fig.savefig("frames/rew.png")
 
