@@ -165,10 +165,13 @@ prepare_window jupyter
 while [ "$(count_sessions)" -lt 2 ]; do sleep 0.1;  done     
 
 exec_on_window_no_log mkvideo "cd ${HOME}/tmp/simulations"
+exec_on_window_no_log mkvideo "rm *gif *png"
 exec_on_window_no_log mkvideo '
     while [[ true ]]; do
         for d in \$(find -type d| grep "sim[0-9]\\+\$"); do
             echo \$d
+            [[ ! -z "\$d/frames/rew.png" ]] && cp \$d/frames/rew.png \${d}_rew.png
+            convert +append *rew.png rews.png
             convert -loop 0 -delay 5 \$(find \$d/frames/bests/ | grep jpeg| sort -n) \${d}_b.gif;
             convert -loop 0 -delay 5 \$(find \$d/frames/lasts/ | grep jpeg| sort -n) \${d}_l.gif;
         done

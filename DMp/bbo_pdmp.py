@@ -50,7 +50,7 @@ class BBO(object) :
         self.decay_amp = sigma_decay_amp
         self.decay_period = sigma_decay_period
         self.epoch = 0
-        self.err = 1.0
+        self.err = 0.0
         
         # create dmps  
         self.dmps = []
@@ -63,19 +63,19 @@ class BBO(object) :
         self.softmax = softmax        
         # define the cost function 
         self.cost_func = cost_func
+
+        self.Sk = 0.0
         
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
         """  
-        if self.err > 1. :
-            self.decay_amp = 0.0
         
         Sigma = self.sigma + self.decay_amp*np.exp(
             -self.epoch/(self.epochs * self.decay_period))
         # matrix of deviations from the parameters mean
         self.eps = np.random.multivariate_normal(
             np.zeros(self.num_params), 
-            self.Cov * Sigma, self.num_rollouts)
+            self.Cov * Sigma * np.exp(-np.max(self.Sk)/float(self.dmp_stime*4)), self.num_rollouts)
     
     def update(self, Sk):
         ''' Update parameters
@@ -125,8 +125,8 @@ class BBO(object) :
                  at each timestep (columns) of each rollout (rows) 
             return: array(float), overall cost of each rollout 
         """   
-        self.err = np.mean(np.mean(errs,1)) # store the mean square error
-   
+        self.err = np.mean(np.mean(errs, 1)) # store the mean square error
+
         # comute costs
         Sk = np.zeros(self.num_rollouts)
         for k in range(self.num_rollouts):
@@ -152,8 +152,8 @@ class BBO(object) :
         self.sample()
         rollouts = self.rollouts(self.theta + explore*self.eps) 
         costs = self.outcomes(rollouts)   
-        Sk = self.eval(costs)
-        self.update(Sk)
+        self.Sk = self.eval(costs)
+        self.update(self.Sk)
         self.epoch += 1
         return rollouts, self.err
     
@@ -162,10 +162,10 @@ class BBO(object) :
 if __name__ == "__main__":
     
     # consts
-    dmp_num_theta = 10
-    dmp_stime = 60
-    dmp_dt = 0.3
-    dmp_sigma = 0.05
+    dmp_num_theta = 20
+    dmp_stime = 100
+    dmp_dt = 0.2
+    dmp_sigma = 0.1
     
     bbo_sigma = 1.0e-03
     bbo_lmb = 0.1

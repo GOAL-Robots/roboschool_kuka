@@ -34,9 +34,13 @@ class Simulation:
         # we control only few joints
         ctrl_joints = self.rollout[:, self.t]
         action = np.zeros(9)
-        action[[0, 2, 5, 6]] = -(ctrl_joints[[0, 2, 5, 6]])*np.pi
-        action[[1, 3, 4]] = ctrl_joints[[1, 3, 4]]*np.pi
-        action[[7, 8]] = ctrl_joints[[7, 8]]*np.pi
+        
+        action[1]   =  np.pi*0.2 + ctrl_joints[1]
+        action[2]   =  np.pi*0.0 + ctrl_joints[2] 
+        action[3]   =  np.pi*0.3 + ctrl_joints[3]
+        action[4:7] =  np.pi*0.0 + ctrl_joints[4:7] 
+        action[7:] = ctrl_joints[7:]*np.pi
+        
         # do the movement
         state, r, done, info_ = self.env.step(action)
 
@@ -85,6 +89,25 @@ class rew_func:
 
         return rews.reshape(1, *rews.shape)
 
+
+def GraspRewardFunc(contact_dict, state):
+    
+    finger_reward = np.sum([ len([contact for contact in contacts 
+        if not "table" in contact]) for part, contacts 
+        in contact_dict.items() if "finger" in part ])
+
+    fingers_reward = len(np.unique(contact_dict.keys()))
+   
+    obj_pose = state[-3:]
+    if GraspRewardFunc.initial_obj_pose is None:
+        GraspRewardFunc.initial_obj_pose = obj_pose.copy()
+
+    distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
+
+    return finger_reward*10*fingers_reward*distance
+
+GraspRewardFunc.initial_obj_pose = None
+
 if __name__ == "__main__":
     
     SIM_PLOT=True
@@ -105,21 +128,22 @@ if __name__ == "__main__":
         os.remove(f)
 
     dmp_num_theta = 20
-    dmp_stime = 60
-    dmp_dt = 0.1
-    dmp_sigma = 0.5
+    dmp_stime = 50
+    dmp_dt = 0.2
+    dmp_sigma = 0.2
 
-    bbo_lmb = 0.8
-    bbo_epochs = 4000
-    bbo_episodes = 40
+    bbo_lmb = 0.1
+    bbo_epochs = 1000
+    bbo_episodes = 20
     bbo_num_dmps = 9
-    bbo_sigma = 1.0e-08
-    bbo_sigma_decay_amp = 20.0
-    bbo_sigma_decay_period = 0.5
-
+    bbo_sigma = 1.0e-10
+    bbo_sigma_decay_amp = 0.8
+    bbo_sigma_decay_period = 1.0e100
+    
     env = gym.make("RoboschoolKuka-v0")
     env.unwrapped.set_eyeEnable(False)
     env.unwrapped.set_eyeShow(False)
+    env.unwrapped.reward_func = GraspRewardFunc
 
     # the BBO object
     bbo = BBO(num_params=dmp_num_theta, 
@@ -129,7 +153,6 @@ if __name__ == "__main__":
             sigma_decay_amp=bbo_sigma_decay_amp, 
             sigma_decay_period=bbo_sigma_decay_period, 
             softmax=rew_softmax, cost_func=rew_func(env))
-
 
     # BBO learning iterations
     rew = np.zeros(bbo_epochs)
@@ -149,14 +172,18 @@ if __name__ == "__main__":
 
             # run the simulator on best rollout
             if rew_func.best_rollout is not None:
-                simulate_step = Simulation(rew_func.best_rollout, env, 
-                        path="frames/bests",  plot=SIM_PLOT, save=True)
-                for t in range(dmp_stime): 
-                    simulate_step()
+                curr_rollout = rew_func.best_rollout
+            else:
+                curr_rollout = rollout_0
+            simulate_step = Simulation(curr_rollout, env, 
+                    path="frames/bests",  plot=SIM_PLOT, save=True)
+            for t in range(dmp_stime): 
+                simulate_step()
 
             # save the plot with reward history
             fig = plt.figure(figsize=(8, 6))
             ax = fig.add_subplot(111)
+            ax.set_ylim([.1, 8.0])
             ax.plot(rew)
             fig.savefig("frames/rew.png")
 
