@@ -1,4 +1,4 @@
-### BBO dmps KUKA roboschool environment ###
+
 
 Simulation of BBO policy-search reinforcement learning with the KUKA roboschool environment.
 
