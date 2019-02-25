@@ -112,5 +112,90 @@ count_sessions() {
 # -------------------------------------------------------------------------------------------
 
 
+run_script() {
+    sim=$1
+    echo "Starting $sim"
+    
+    exec_on_window_no_log $sim "cd ${HOME}/tmp"
+    sleep 0.01
+    exec_on_window_no_log $sim "mkdir -p simulations/$sim"
+    sleep 0.01
+    exec_on_window_no_log $sim "rm -fr simulations/$sim/*"
+    sleep 0.01
+    exec_on_window_no_log $sim "cd simulations/$sim"
+    sleep 0.01
+    exec_on_window_no_log $sim "export DISPLAY=$XORG_DISPLAY"
+    sleep 0.01 
+    exec_on_window_no_log $sim "vglrun python $SCRIPTPATH/simulation.py"
+    sleep 0.1
+}
+
+# prepare screen session
 kill_xvfb
-kill_session
+init_screen
+echo ----
+sleep 0.1
+prepare_window xvfb
+
+for x in $(seq $START $((START + N_SIMS - 1))); do
+    prepare_window sim${x}
+done
+
+while [ "$(count_sessions)" -lt $N_SIMS ]; do sleep 0.1;  done     
+sleep 0.1
+exec_on_window_no_log xvfb "Xvfb $XORG_DISPLAY -screen 0 1920x1200x24 -shmem &"
+sleep 0.1
+
+for x in $(seq $START $((START + N_SIMS - 1))); do
+    run_script sim${x}
+done
+
+sleep 1
+
+SESSION=video
+
+# prepare screen session
+init_screen 1
+echo ----
+sleep 0.1
+
+prepare_window mkvideo
+prepare_window jupyter
+
+while [ "$(count_sessions)" -lt 2 ]; do sleep 0.1;  done     
+
+exec_on_window_no_log mkvideo "mkdir -p ${HOME}/tmp/simulations "
+exec_on_window_no_log mkvideo "cd ${HOME}/tmp/simulations"
+exec_on_window_no_log mkvideo "rm *gif *png"
+exec_on_window_no_log mkvideo '
+    dirs=\$(find -type d| grep "sim[0-9]\\+\$") 
+    for d in \$dirs; do
+        convert -size 800x600 xc:transparent \${d}_b.gif
+        convert -size 800x600 xc:transparent \${d}_l.gif
+        dn=\$(basename \$d)
+        dnr=\${dn}_rew.png
+        convert -size 800x600 xc:transparent \$dnr
+    done
+    convert -size 800x600 xc:transparent rews.png
+    '
+exec_on_window_no_log mkvideo '
+    while [[ true ]]; do
+        for d in \$dirs; do
+            cp \$d/frames/rew.png \${d}_rew.png
+        done
+        convert +append *rew.png rews_tmp.png
+        mv rews_tmp.png rews.png
+        for d in \$dirs; do
+            echo \$d
+            convert -loop 0 -delay 2 \$(find \$d/frames/epochs/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_b_tmp.gif;
+            convert -loop 0 -delay 2 \$(find \$d/frames/lasts/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_l_tmp.gif;
+            mv \${d}_b_tmp.gif \${d}_b.gif
+            mv \${d}_l_tmp.gif \${d}_l.gif
+        done
+
+
+        sleep 10
+    done'
+exec_on_window_no_log jupyter "cd ${HOME}/tmp/simulations"
+exec_on_window_no_log jupyter "jupyter-notebook"
+

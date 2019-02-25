@@ -12,6 +12,31 @@ from PIL import Image
 
 
 
+def GraspRewardFunc(contact_dict, state):
+    
+    finger_reward = np.sum([ len([contact for contact in contacts 
+        if "tomato" in contact]) for part, contacts 
+        in contact_dict.items() if "finger" in part ])
+
+    fingers_reward = len(np.unique(contact_dict.keys()))
+    
+    table_reward = np.sum([ len([contact for contact in contacts 
+        if "table" in contact]) for part, contacts 
+        in contact_dict.items() if not "finger" in part ])
+   
+    obj_pose = state[-3:]
+
+    distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
+    dist_sigma = 4.0*np.exp(-GraspRewardFunc.epoch)
+    distance = np.exp(-(dist_sigma**-2)*distance**2)
+    finger_amp = 1.0
+    table_amp = 0.1
+
+
+    return finger_amp*finger_reward*fingers_reward*distance -  table_amp*table_reward
+
+GraspRewardFunc.epoch = 0
+GraspRewardFunc.initial_obj_pose = [0.0, 0.0, 0.8]
 
 class Simulation:
     def __init__(self, rollout, env, plot=False, save=False, path="frames/lasts" ):
@@ -73,6 +98,7 @@ class rew_func:
         n_joints, n_episodes, timesteps = rollouts.shape 
 
         rews = np.zeros([n_episodes, timesteps])
+        rew_means = np.zeros(n_episodes)
         for episode in range(n_episodes):
             
             # simulate with the current joint trajectory to read rewards
@@ -80,38 +106,25 @@ class rew_func:
                     self.env, plot=False)
             for t in range(timesteps):
                 rews[episode, t] = np.sum(simulate_step())
-            rew_mean = np.mean(rews[episode, t]) 
+            rew_means[episode] = np.mean(rews[episode]) 
             
             # we save the best rollout till now
-            if rew_mean > rew_func.curr_rew:
+            if rew_means[episode] > rew_func.curr_rew:
                rew_func.best_rollout = np.squeeze(rollouts[:,episode,:]).copy()
-            rew_func.curr_rew = rew_mean;
+            rew_func.curr_rew = rew_means[episode];
+        
+        max_idx = np.argmax(rew_means)
+        rew_func.epoch_rollout = np.squeeze(rollouts[:,max_idx,:]).copy()
 
         return rews.reshape(1, *rews.shape)
 
 
-def GraspRewardFunc(contact_dict, state):
-    
-    finger_reward = np.sum([ len([contact for contact in contacts 
-        if not "table" in contact]) for part, contacts 
-        in contact_dict.items() if "finger" in part ])
 
-    fingers_reward = len(np.unique(contact_dict.keys()))
-   
-    obj_pose = state[-3:]
-    if GraspRewardFunc.initial_obj_pose is None:
-        GraspRewardFunc.initial_obj_pose = obj_pose.copy()
-
-    distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
-
-    return finger_reward*10*fingers_reward*distance
-
-GraspRewardFunc.initial_obj_pose = None
 
 if __name__ == "__main__":
     
-    SIM_PLOT=True
-        
+    SIM_PLOT=False
+       
     if not os.path.exists("frames"):
         os.makedirs("frames")
 
@@ -127,8 +140,14 @@ if __name__ == "__main__":
     for f in files:
         os.remove(f)
 
+    if not os.path.exists("frames/epochs"):
+        os.makedirs("frames/epochs")
+    files = glob.glob('/frames/epochs/*')
+    for f in files:
+        os.remove(f)
+
     dmp_num_theta = 20
-    dmp_stime = 50
+    dmp_stime = 100
     dmp_dt = 0.2
     dmp_sigma = 0.2
 
@@ -137,10 +156,10 @@ if __name__ == "__main__":
     bbo_episodes = 20
     bbo_num_dmps = 9
     bbo_sigma = 1.0e-10
-    bbo_sigma_decay_amp = 0.8
+    bbo_sigma_decay_amp = 1.0
     bbo_sigma_decay_period = 1.0e100
     
-    env = gym.make("RoboschoolKuka-v0")
+    env = gym.make("RoboschoolKuka-v1")
     env.unwrapped.set_eyeEnable(False)
     env.unwrapped.set_eyeShow(False)
     env.unwrapped.reward_func = GraspRewardFunc
@@ -180,10 +199,21 @@ if __name__ == "__main__":
             for t in range(dmp_stime): 
                 simulate_step()
 
+            # run the simulator on epoch rollout
+            if rew_func.best_rollout is not None:
+                curr_rollout = rew_func.epoch_rollout
+            else:
+                curr_rollout = rollout_0
+            simulate_step = Simulation(curr_rollout, env, 
+                    path="frames/epochs",  plot=SIM_PLOT, save=True)
+            for t in range(dmp_stime): 
+                simulate_step()
+
+            GraspRewardFunc.epoch = k/float(bbo_epochs)
+
             # save the plot with reward history
-            fig = plt.figure(figsize=(8, 6))
+            fig = plt.figure(figsize=(800/100, 600/100), dpi=100)
             ax = fig.add_subplot(111)
-            ax.set_ylim([.1, 8.0])
             ax.plot(rew)
-            fig.savefig("frames/rew.png")
+            fig.savefig("frames/rew.png",dpi=100)
 

@@ -72,10 +72,12 @@ class BBO(object) :
         
         Sigma = self.sigma + self.decay_amp*np.exp(
             -self.epoch/(self.epochs * self.decay_period))
+        Sigma *= np.exp(-np.max(self.Sk)/float(self.dmp_stime*4))
+
         # matrix of deviations from the parameters mean
         self.eps = np.random.multivariate_normal(
             np.zeros(self.num_params), 
-            self.Cov * Sigma * np.exp(-np.max(self.Sk)/float(self.dmp_stime*4)), self.num_rollouts)
+            self.Cov * Sigma, self.num_rollouts)
     
     def update(self, Sk):
         ''' Update parameters
