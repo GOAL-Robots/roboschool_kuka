@@ -9,7 +9,7 @@ Simulation of BBO policy-search reinforcement learning with the KUKA roboschool 
 * python3
 * matplotlib
 * PIL
-* roboschool-kuka
+* [roboschool-kuka-envs](https://github.com/GOAL-Robots/roboschool-kuka-envs)
 
 
 To run multiple simulations with [run_simulations.sh](/blob/master/run_simulations.sh) you also need 
