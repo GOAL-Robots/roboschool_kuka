@@ -8,7 +8,7 @@ Simulation of BBO policy-search reinforcement learning with the KUKA roboschool 
 
 * python3
 * matplotlib
-* PIL
+* Pillow
 * [roboschool-kuka-envs](https://github.com/GOAL-Robots/roboschool-kuka-envs)
 
 
