@@ -7,7 +7,7 @@ SCRIPTPATH=$(dirname $SCRIPT)
 SESSION=dmpgrasp
 XORG_DISPLAY=:5
 START=0
-N_SIMS=4
+N_SIMS=2
 
 
 # -------------------------------------------------------------------------------------------
@@ -27,6 +27,8 @@ kill_session() {
     echo "killing previous sessions..."
    
         
+    screen -S "video" -X quit &> /dev/null || true  
+    killall physics_server || true
     for ses in $sessions;    
     do      
         echo "   killing session $ses" 
@@ -126,48 +128,116 @@ run_script() {
     sleep 0.01
     exec_on_window_no_log $sim "export DISPLAY=$XORG_DISPLAY"
     sleep 0.01 
-    exec_on_window_no_log $sim "vglrun python $SCRIPTPATH/simulation.py"
+    exec_on_window_no_log $sim "b3serv vglrun python $SCRIPTPATH/simulation.py 2>log"
     sleep 0.1
 }
 
-# prepare screen session
-kill_xvfb
-init_screen
-echo ----
-sleep 0.1
-prepare_window xvfb
 
-for x in $(seq $START $((START + N_SIMS - 1))); do
-    prepare_window sim${x}
+# Manage arguments
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
+
+usage()
+{
+    cat <<EOF
+
+    usage: $0 options
+
+    This script runs a group of kuka_gipper simulations 
+
+    OPTIONS:
+    -r --run         Starts the simulation
+    -k --close       Closes all processes
+    -h --help        Show this help menu 
+EOF
+}
+
+
+RUN=false
+CLOSE=false
+
+# getopt
+GOTEMP="$(getopt -o "rkh" -l "run,close,help"  -n '' -- "$@")"
+
+if [[ -z "$(echo -n $GOTEMP |sed -e"s/\-\-\(\s\+.*\|\s*\)$//")" ]]; then
+    usage; exit;
+fi
+
+eval set -- "$GOTEMP"
+
+while true ;
+do
+    case "$1" in
+        -k | --close)
+            CLOSE=true
+            break ;;
+        -r | --run)
+            RUN=true
+            shift;;
+        -h | --help)
+            echo "on help"
+            usage; exit;
+            shift;
+            break;;
+        --) shift ;
+            break ;;
+    esac
 done
 
-while [ "$(count_sessions)" -lt $N_SIMS ]; do sleep 0.1;  done     
-sleep 0.1
-exec_on_window_no_log xvfb "Xvfb $XORG_DISPLAY -screen 0 1920x1200x24 -shmem &"
-sleep 0.1
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------
 
-for x in $(seq $START $((START + N_SIMS - 1))); do
-    run_script sim${x}
-done
 
-sleep 1
+if [[ ${CLOSE} == true ]]; then
+    kill_xvfb
+    kill_session
+    killall -9 physics_server
+fi
 
-SESSION=video
+if [[ ${RUN} == true ]]; then
+    # prepare screen session
+    kill_xvfb
+    init_screen
+    echo ----
+    sleep 0.1
+    prepare_window xvfb
 
-# prepare screen session
-init_screen 1
-echo ----
-sleep 0.1
+    for x in $(seq $START $((START + N_SIMS - 1))); do
+        prepare_window sim${x}
+    done
 
-prepare_window mkvideo
-prepare_window jupyter
+    while [ "$(count_sessions)" -lt $N_SIMS ]; do sleep 0.1;  done     
+    sleep 0.1
+    exec_on_window_no_log xvfb "Xvfb $XORG_DISPLAY -screen 0 800x600x24 &"
+    sleep 1
 
-while [ "$(count_sessions)" -lt 2 ]; do sleep 0.1;  done     
+    for x in $(seq $START $((START + N_SIMS - 1))); do
+        run_script sim${x}
+        sleep 15
+    done
 
-exec_on_window_no_log mkvideo "mkdir -p ${HOME}/tmp/simulations "
-exec_on_window_no_log mkvideo "cd ${HOME}/tmp/simulations"
-exec_on_window_no_log mkvideo "rm *gif *png"
-exec_on_window_no_log mkvideo '
+    sleep 10
+
+    SESSION=video
+
+    # prepare screen session
+    init_screen 1
+    echo ----
+    sleep 0.1
+
+    prepare_window mkvideo
+    prepare_window jupyter
+
+    while [ "$(count_sessions)" -lt 2 ]; do sleep 0.1;  done     
+
+    exec_on_window_no_log mkvideo "mkdir -p ${HOME}/tmp/simulations "
+    exec_on_window_no_log mkvideo "cd ${HOME}/tmp/simulations"
+    exec_on_window_no_log mkvideo "rm *gif *png"
+    exec_on_window_no_log mkvideo '
     dirs=\$(find -type d| grep "sim[0-9]\\+\$") 
     for d in \$dirs; do
         convert -size 800x600 xc:transparent \${d}_b.gif
@@ -178,7 +248,7 @@ exec_on_window_no_log mkvideo '
     done
     convert -size 800x600 xc:transparent rews.png
     '
-exec_on_window_no_log mkvideo '
+    exec_on_window_no_log mkvideo '
     while [[ true ]]; do
         for d in \$dirs; do
             cp \$d/frames/rew.png \${d}_rew.png
@@ -196,6 +266,6 @@ exec_on_window_no_log mkvideo '
 
         sleep 10
     done'
-exec_on_window_no_log jupyter "cd ${HOME}/tmp/simulations"
-exec_on_window_no_log jupyter "jupyter-notebook"
-
+    exec_on_window_no_log jupyter "cd ${HOME}/tmp/simulations"
+    exec_on_window_no_log jupyter "jupyter-notebook"
+fi
