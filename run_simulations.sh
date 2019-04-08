@@ -7,7 +7,7 @@ SCRIPTPATH=$(dirname $SCRIPT)
 SESSION=dmpgrasp
 XORG_DISPLAY=:5
 START=0
-N_SIMS=2
+N_SIMS=1
 
 
 # -------------------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ kill_session() {
    
         
     screen -S "video" -X quit &> /dev/null || true  
-    killall physics_server || true
+    killall -9 physics_server > /dev/null 2>&1 || true
     for ses in $sessions;    
     do      
         echo "   killing session $ses" 
@@ -111,6 +111,38 @@ count_sessions() {
             sed 's/^\s\+\([0-9]\+\)[\.].*/\1/')" 
 }
 
+# html visualization template
+
+html_figs()
+{
+    html='
+    <!DOCTYPE html>
+    <html>
+    <head>
+
+    </head>
+    <body>
+    <table>
+    __TR__
+    </table>
+    </body>
+    </html>'
+    row='
+    <tr>
+    <td><img src="sim__NUM___b.gif" width="100%" alt=""></td>
+    <td><img src="sim__NUM___rew.png" width="100%" alt=""></td>
+    </tr>'
+
+    for r in $( seq $START $((N_SIMS - 1)) ); do
+        curr_row="$(echo $row | sed -e"s@__NUM__@$r@g")"
+        html=$(echo "$html" | sed -e"s@__TR__@${curr_row}__TR__@g" )
+    done
+    html=$(echo "$html" | sed -e"s@__TR__@@g" )
+    if [[ ! -z $(which tidy) ]]; then
+        html="$(echo "$html"|tidy -miq || true)" 
+    fi
+    echo "$html"
+}
 # -------------------------------------------------------------------------------------------
 
 
@@ -128,7 +160,7 @@ run_script() {
     sleep 0.01
     exec_on_window_no_log $sim "export DISPLAY=$XORG_DISPLAY"
     sleep 0.01 
-    exec_on_window_no_log $sim "b3serv vglrun python $SCRIPTPATH/simulation.py 2>log"
+    exec_on_window_no_log $sim "vglrun python $SCRIPTPATH/simulation.py > log 2>&1 | tee log "
     sleep 0.1
 }
 
@@ -157,9 +189,11 @@ EOF
 
 RUN=false
 CLOSE=false
+B3SERV=
+VGL=
 
 # getopt
-GOTEMP="$(getopt -o "rkh" -l "run,close,help"  -n '' -- "$@")"
+GOTEMP="$(getopt -o "rkbh" -l "run,close,b3serv,help"  -n '' -- "$@")"
 
 if [[ -z "$(echo -n $GOTEMP |sed -e"s/\-\-\(\s\+.*\|\s*\)$//")" ]]; then
     usage; exit;
@@ -195,7 +229,6 @@ done
 if [[ ${CLOSE} == true ]]; then
     kill_xvfb
     kill_session
-    killall -9 physics_server
 fi
 
 if [[ ${RUN} == true ]]; then
@@ -217,10 +250,10 @@ if [[ ${RUN} == true ]]; then
 
     for x in $(seq $START $((START + N_SIMS - 1))); do
         run_script sim${x}
-        sleep 15
+        sleep 5
     done
 
-    sleep 10
+    sleep 2
 
     SESSION=video
 
@@ -237,7 +270,9 @@ if [[ ${RUN} == true ]]; then
     exec_on_window_no_log mkvideo "mkdir -p ${HOME}/tmp/simulations "
     exec_on_window_no_log mkvideo "cd ${HOME}/tmp/simulations"
     exec_on_window_no_log mkvideo "rm *gif *png"
+    echo "$(html_figs)" > ${HOME}/tmp/simulations/figs.html
     exec_on_window_no_log mkvideo '
+    echo "clear initial figures..."
     dirs=\$(find -type d| grep "sim[0-9]\\+\$") 
     for d in \$dirs; do
         convert -size 800x600 xc:transparent \${d}_b.gif
@@ -251,12 +286,13 @@ if [[ ${RUN} == true ]]; then
     exec_on_window_no_log mkvideo '
     while [[ true ]]; do
         for d in \$dirs; do
+            echo "make \${d}_rew.png ..."
             cp \$d/frames/rew.png \${d}_rew.png
         done
         convert +append *rew.png rews_tmp.png
         mv rews_tmp.png rews.png
         for d in \$dirs; do
-            echo \$d
+            echo "make \${d}_b_tmp.gif and \${d}_l_tmp.gif ..."
             convert -loop 0 -delay 2 \$(find \$d/frames/epochs/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_b_tmp.gif;
             convert -loop 0 -delay 2 \$(find \$d/frames/lasts/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_l_tmp.gif;
             mv \${d}_b_tmp.gif \${d}_b.gif

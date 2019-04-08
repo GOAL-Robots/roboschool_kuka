@@ -7,9 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import DMp
 from DMp.bbo_pdmp import BBO, rew_softmax
-import roboschool
+import kukacomp 
 from PIL import Image
-import time
+import time, sys
 
 #-----------------------------------------------------------------------------
 
@@ -151,20 +151,19 @@ if __name__ == "__main__":
     dmp_sigma = 0.2
 
     bbo_lmb = 0.1
-    bbo_epochs = 2000
+    bbo_epochs = 1000
     bbo_episodes = 20
     bbo_num_dmps = 9
     bbo_sigma = 1.0e-10
     bbo_sigma_decay_amp = 1.0
-    bbo_sigma_decay_period = 1.0e100
+    bbo_sigma_decay_period = 0.2
     init_gap = 150
     
-    env = gym.make("RoboschoolKuka-v1")
-    env.unwrapped.set_eyeEnable(False)
-    env.unwrapped.set_eyeShow(False)
-    env.unwrapped.reward_func = GraspRewardFunc
-    env.unwrapped.used_objects = ["ORANGE"]
-
+    env = gym.make("KukaComp-v0")
+    env.reward_func = GraspRewardFunc
+    env.robot.used_objects = ["table", "orange"]
+    #env.render("human")
+    
     # the BBO object
     bbo = BBO(num_params=dmp_num_theta, 
             dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
@@ -187,8 +186,7 @@ if __name__ == "__main__":
         start = time.time()
         rollouts, rew[k] = bbo.iteration()
         end = time.time()
-        
-       
+         
         # save and plot
         print("{:#4d} {:6.2f} -- {}".format(k, rew[k], end - start))
 
