@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import DMp
 from DMp.bbo_pdmp import BBO, rew_softmax
-import kukacomp 
+import realcomp 
 from PIL import Image
 import time, sys
 
@@ -150,25 +150,27 @@ if __name__ == "__main__":
     dmp_dt = 0.2
     dmp_sigma = 0.2
 
-    bbo_lmb = 0.1
+    bbo_softmax_temp = 0.1
     bbo_epochs = 1000
     bbo_episodes = 20
     bbo_num_dmps = 9
-    bbo_sigma = 1.0e-10
-    bbo_sigma_decay_amp = 1.0
-    bbo_sigma_decay_period = 0.2
+    bbo_sigma = 3.0e-1
+    bbo_sigma_decay_amp = 0.0
+    bbo_sigma_decay_period = 9999
     init_gap = 150
     
-    env = gym.make("KukaComp-v0")
+    env = gym.make("REALComp-v0")
     env.reward_func = GraspRewardFunc
     env.robot.used_objects = ["table", "orange"]
+    env._render_width = 640
+    env._render_height = 480
     #env.render("human")
     
     # the BBO object
     bbo = BBO(num_params=dmp_num_theta, 
             dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
             num_rollouts=bbo_episodes, num_dmps=bbo_num_dmps,
-            sigma=bbo_sigma, lmb=bbo_lmb, epochs=bbo_epochs,
+            sigma=bbo_sigma, lmb=bbo_softmax_temp, epochs=bbo_epochs,
             sigma_decay_amp=bbo_sigma_decay_amp, 
             sigma_decay_period=bbo_sigma_decay_period, 
             softmax=rew_softmax, cost_func=Objective(env))

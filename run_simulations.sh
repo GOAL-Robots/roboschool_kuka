@@ -7,7 +7,7 @@ SCRIPTPATH=$(dirname $SCRIPT)
 SESSION=dmpgrasp
 XORG_DISPLAY=:5
 START=0
-N_SIMS=1
+N_SIMS=4
 
 
 # -------------------------------------------------------------------------------------------
@@ -123,6 +123,8 @@ html_figs()
     </head>
     <body>
     <table>
+    <col width="70%">
+    <col width="30%">
     __TR__
     </table>
     </body>
