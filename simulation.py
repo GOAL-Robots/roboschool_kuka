@@ -12,11 +12,12 @@ from PIL import Image
 import time, sys
 
 #-----------------------------------------------------------------------------
+target = "mustard"
 
 def GraspRewardFunc(contact_dict, state):
     
     finger_reward = np.sum([ len([contact for contact in contacts 
-        if "orange" in contact]) for part, contacts 
+        if target in contact]) for part, contacts 
         in contact_dict.items() if "finger" in part ])
 
     fingers_reward = len(np.unique(contact_dict.keys()))
@@ -68,10 +69,10 @@ class Simulator:
         
         action[0]   =  np.pi*0.0 + ctrl_joints[0]
         action[1]   =  np.pi*0.2 + ctrl_joints[1]
-        action[2]   =  np.pi*0.2 + ctrl_joints[2] 
+        action[2]   =  np.pi*0.0 + ctrl_joints[2] 
         action[3]   = -np.pi*0.2 + ctrl_joints[3]
         action[4:7] =  np.pi*0.0 + ctrl_joints[4:7] 
-        action[7:] = ctrl_joints[7:]*np.pi
+        action[7:] = ctrl_joints[7:]
         
         # do the movement
         state, r, done, info_ = self.env.step(action)
@@ -161,7 +162,7 @@ if __name__ == "__main__":
     
     env = gym.make("REALComp-v0")
     env.reward_func = GraspRewardFunc
-    env.robot.used_objects = ["table", "orange"]
+    env.robot.used_objects = ["table", target]
     env._render_width = 640
     env._render_height = 480
     #env.render("human")
