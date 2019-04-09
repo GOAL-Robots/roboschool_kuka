@@ -119,10 +119,10 @@ html_figs()
     <!DOCTYPE html>
     <html>
     <head>
-
+    <title></title>
     </head>
     <body>
-    <table>
+    <table summary="">
     <col width="70%">
     <col width="30%">
     __TR__
@@ -162,7 +162,7 @@ run_script() {
     sleep 0.01
     exec_on_window_no_log $sim "export DISPLAY=$XORG_DISPLAY"
     sleep 0.01 
-    exec_on_window_no_log $sim "vglrun python $SCRIPTPATH/simulation.py > log 2>&1 | tee log "
+    exec_on_window_no_log $sim "vglrun python $SCRIPTPATH/simulation.py 2>&1 | tee log "
     sleep 0.1
 }
 
@@ -245,7 +245,6 @@ if [[ ${RUN} == true ]]; then
         prepare_window sim${x}
     done
 
-    while [ "$(count_sessions)" -lt $N_SIMS ]; do sleep 0.1;  done     
     sleep 0.1
     exec_on_window_no_log xvfb "Xvfb $XORG_DISPLAY -screen 0 800x600x24 &"
     sleep 1
@@ -267,7 +266,7 @@ if [[ ${RUN} == true ]]; then
     prepare_window mkvideo
     prepare_window jupyter
 
-    while [ "$(count_sessions)" -lt 2 ]; do sleep 0.1;  done     
+    sleep 0.1
 
     exec_on_window_no_log mkvideo "mkdir -p ${HOME}/tmp/simulations "
     exec_on_window_no_log mkvideo "cd ${HOME}/tmp/simulations"
@@ -296,9 +295,9 @@ if [[ ${RUN} == true ]]; then
         for d in \$dirs; do
             echo "make \${d}_b_tmp.gif and \${d}_l_tmp.gif ..."
             convert -loop 0 -delay 2 \$(find \$d/frames/epochs/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_b_tmp.gif;
-            convert -loop 0 -delay 2 \$(find \$d/frames/lasts/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_l_tmp.gif;
+            #convert -loop 0 -delay 2 \$(find \$d/frames/lasts/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_l_tmp.gif;
             mv \${d}_b_tmp.gif \${d}_b.gif
-            mv \${d}_l_tmp.gif \${d}_l.gif
+            #mv \${d}_l_tmp.gif \${d}_l.gif
         done
 
 

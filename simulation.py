@@ -29,13 +29,13 @@ def GraspRewardFunc(contact_dict, state):
     obj_pose = state[-3:]
 
     distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
-    dist_sigma = 4.0*np.exp(-GraspRewardFunc.epoch)
+    dist_sigma = 1.0
     distance = np.exp(-(dist_sigma**-2)*distance**2)
-    finger_amp = 1.0
-    table_amp = 0.1
+    finger_amp = 5.0
+    table_amp = 0.8
 
 
-    return finger_amp*finger_reward*fingers_reward*distance -  table_amp*table_reward
+    return finger_amp*finger_reward*distance*fingers_reward - table_amp*table_reward
 
 GraspRewardFunc.epoch = 0
 GraspRewardFunc.initial_obj_pose = [0.0, 0.0, 0.8]
@@ -153,15 +153,17 @@ if __name__ == "__main__":
 
     bbo_softmax_temp = 0.1
     bbo_epochs = 1000
-    bbo_episodes = 20
+    bbo_episodes = 25
     bbo_num_dmps = 9
-    bbo_sigma = 3.0e-1
+    bbo_sigma = 1.5
     bbo_sigma_decay_amp = 0.0
     bbo_sigma_decay_period = 9999
     init_gap = 150
     
+
     env = gym.make("REALComp-v0")
     env.reward_func = GraspRewardFunc
+    env.robot.target = target
     env.robot.used_objects = ["table", target]
     env._render_width = 640
     env._render_height = 480
@@ -197,24 +199,24 @@ if __name__ == "__main__":
             rollouts = np.array(rollouts)
             rollout_0 = np.squeeze(rollouts[:,0,:])
         
-            curr_rollout = rollout_0
-            curr_rollout = init_trj(curr_rollout)
-            # run the simulator on first episode of last iteration
-            simulate = Simulator(curr_rollout, env,
-                    path="frames/lasts", plot=SIM_PLOT, save=True)
-            for t in range(curr_rollout.shape[1]): 
-                simulate.step()
+            # curr_rollout = rollout_0
+            # curr_rollout = init_trj(curr_rollout)
+            # # run the simulator on first episode of last iteration
+            # simulate = Simulator(curr_rollout, env,
+            #         path="frames/lasts", plot=SIM_PLOT, save=True)
+            # for t in range(curr_rollout.shape[1]): 
+            #     simulate.step()
         
-            # run the simulator on best rollout
-            if Objective.best_rollout is not None:
-                curr_rollout = Objective.best_rollout
-            else:
-                curr_rollout = rollout_0
-            curr_rollout = init_trj(curr_rollout)
-            simulate = Simulator(curr_rollout, env, 
-                    path="frames/bests",  plot=SIM_PLOT, save=True)
-            for t in range(curr_rollout.shape[1]): 
-                simulate.step()
+            # # run the simulator on best rollout
+            # if Objective.best_rollout is not None:
+            #     curr_rollout = Objective.best_rollout
+            # else:
+            #     curr_rollout = rollout_0
+            # curr_rollout = init_trj(curr_rollout)
+            # simulate = Simulator(curr_rollout, env, 
+            #         path="frames/bests",  plot=SIM_PLOT, save=True)
+            # for t in range(curr_rollout.shape[1]): 
+            #     simulate.step()
         
             # run the simulator on epoch rollout
             if Objective.best_rollout is not None:
