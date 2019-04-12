@@ -12,30 +12,47 @@ from PIL import Image
 import time, sys
 
 #-----------------------------------------------------------------------------
-target = "mustard"
+target = "tomato"
+dmp_num_theta = 40
+dmp_stime = 200
+dmp_dt = 0.2
+dmp_sigma = 0.01
+
+
+bbo_softmax_temp = 0.1
+bbo_epochs = 1000
+bbo_episodes = 25
+bbo_num_dmps = 9
+bbo_sigma = 1e-100
+bbo_sigma_decay_amp = 0.6
+bbo_sigma_decay_period = 9999
+init_gap = 150
+
+dist_sigma = 0.01
+finger_amp = 1.0
+dist_amp = 500.0
+table_amp = 0.0
 
 def GraspRewardFunc(contact_dict, state):
     
-    finger_reward = np.sum([ len([contact for contact in contacts 
-        if target in contact]) for part, contacts 
-        in contact_dict.items() if "finger" in part ])
+    finger_reward = len([contact for part, contacts 
+        in contact_dict.items() for contact in contacts
+        if "finger" in part and target in contact])
 
-    fingers_reward = len(np.unique(contact_dict.keys()))
+    fingers_reward = len(set([part for part,contacts in 
+        contact_dict.items() for contact in contacts
+        if "finger" in part and target in contact]))
     
-    table_reward = np.sum([ len([contact for contact in contacts 
-        if "table" in contact]) for part, contacts 
-        in contact_dict.items() if not "finger" in part ])
-   
+    table_reward = len([contact for part, contacts
+        in contact_dict.items() for contact in contacts 
+        if "table" in contact])
+
     obj_pose = state[-3:]
 
     distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
-    dist_sigma = 1.0
     distance = np.exp(-(dist_sigma**-2)*distance**2)
-    finger_amp = 5.0
-    table_amp = 0.8
-
-
-    return finger_amp*finger_reward*distance*fingers_reward - table_amp*table_reward
+    
+    return finger_amp*(finger_reward)*(1 + dist_amp*distance) - table_amp*table_reward
 
 GraspRewardFunc.epoch = 0
 GraspRewardFunc.initial_obj_pose = [0.0, 0.0, 0.8]
@@ -146,19 +163,6 @@ if __name__ == "__main__":
             if(os.path.isfile(f)):
                 os.remove(f)
 
-    dmp_num_theta = 20
-    dmp_stime = 100
-    dmp_dt = 0.2
-    dmp_sigma = 0.2
-
-    bbo_softmax_temp = 0.1
-    bbo_epochs = 1000
-    bbo_episodes = 25
-    bbo_num_dmps = 9
-    bbo_sigma = 1.5
-    bbo_sigma_decay_amp = 0.0
-    bbo_sigma_decay_period = 9999
-    init_gap = 150
     
 
     env = gym.make("REALComp-v0")
@@ -207,27 +211,27 @@ if __name__ == "__main__":
             # for t in range(curr_rollout.shape[1]): 
             #     simulate.step()
         
-            # # run the simulator on best rollout
-            # if Objective.best_rollout is not None:
-            #     curr_rollout = Objective.best_rollout
-            # else:
-            #     curr_rollout = rollout_0
-            # curr_rollout = init_trj(curr_rollout)
-            # simulate = Simulator(curr_rollout, env, 
-            #         path="frames/bests",  plot=SIM_PLOT, save=True)
-            # for t in range(curr_rollout.shape[1]): 
-            #     simulate.step()
-        
-            # run the simulator on epoch rollout
+            # run the simulator on best rollout
             if Objective.best_rollout is not None:
-                curr_rollout = Objective.epoch_rollout
+                curr_rollout = Objective.best_rollout
             else:
                 curr_rollout = rollout_0
             curr_rollout = init_trj(curr_rollout)
             simulate = Simulator(curr_rollout, env, 
-                    path="frames/epochs",  plot=SIM_PLOT, save=True)
+                    path="frames/bests",  plot=SIM_PLOT, save=True)
             for t in range(curr_rollout.shape[1]): 
                 simulate.step()
+        
+            # # run the simulator on epoch rollout
+            # if Objective.best_rollout is not None:
+            #     curr_rollout = Objective.epoch_rollout
+            # else:
+            #     curr_rollout = rollout_0
+            # curr_rollout = init_trj(curr_rollout)
+            # simulate = Simulator(curr_rollout, env, 
+            #         path="frames/epochs",  plot=SIM_PLOT, save=True)
+            # for t in range(curr_rollout.shape[1]): 
+            #     simulate.step()
         
             GraspRewardFunc.epoch = k/float(bbo_epochs)
         
