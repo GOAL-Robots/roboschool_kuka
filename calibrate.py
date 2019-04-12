@@ -12,23 +12,17 @@ from PIL import Image
 import time
 
 class Simulation:
-    def __init__(self, rollout, env, plot=False, save=False, path="frames/lasts" ):
+    def __init__(self, rollout, env, plot=False):
         """
         :param rollout: A single rollout (n_joints x timesteps) from which joint commands are taken
         :param plot: if the simulation is rendered on a window
-        :param save: if the simulation frames are saved on file
-        :param path: path where jpegs are saved
         """
         self.t = 0
         self.rollout = rollout  
         self.plot = plot
-        self.path = path
-        self.save = save
         self.env = env
         self.env.reset()
 
-        if save:
-            np.savetxt(self.path+"/rollout",rollout)
         
     def __call__(self):    
 
@@ -45,6 +39,9 @@ class Simulation:
         
         # do the movement
         state, r, done, info_ = self.env.step(action)
+    
+        if len(info_["contacts"]) > 0:
+            print(info_["contacts"])
 
         self.t += 1  
         return r
@@ -59,11 +56,22 @@ if __name__ == "__main__":
     env.robot.object_poses["mustard"][2] = 1 
     env.render("human")
 
-    rollout = np.zeros([9, 30000])
-    sim = Simulation(rollout, env, plot=False, save=True)
+    stime = 200
+    rollout = np.zeros([9, stime])
+    rollout[7, int(stime*1/8):] +=  np.pi*0.05
+    rollout[8, int(stime*1/8):] +=  np.pi*0.05
+    rollout[4, int(stime*2/8):] -=  np.pi*0.8
+    rollout[5, int(stime*3/8):] -=  np.pi*0.5
+    rollout[0, int(stime*4/8):] +=  np.pi*0.05
+    rollout[1, int(stime*5/8):] +=  np.pi*0.15
+    rollout[7, int(stime*6/8):] -=  np.pi*0.1
+    rollout[1, int(stime*7/8):] -=  np.pi*0.15
+
+    sim = Simulation(rollout, env, plot=False)
+
 
     for t in range(len(rollout.T)): 
-        time.sleep(1/60)
+        time.sleep(1/20)
         sim()
 
     
