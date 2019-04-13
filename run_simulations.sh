@@ -293,11 +293,9 @@ if [[ ${RUN} == true ]]; then
         convert +append *rew.png rews_tmp.png
         mv rews_tmp.png rews.png
         for d in \$dirs; do
-            echo "make \${d}_b_tmp.gif and \${d}_l_tmp.gif ..."
+            echo "make \${d}_b_tmp.gif ..."
             convert -loop 0 -delay 2 \$(find \$d/frames/bests/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_b_tmp.gif;
-            #convert -loop 0 -delay 2 \$(find \$d/frames/lasts/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_l_tmp.gif;
             mv \${d}_b_tmp.gif \${d}_b.gif
-            #mv \${d}_l_tmp.gif \${d}_l.gif
         done
 
 

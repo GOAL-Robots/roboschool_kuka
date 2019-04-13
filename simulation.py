@@ -8,30 +8,32 @@ import matplotlib.pyplot as plt
 import DMp
 from DMp.bbo_pdmp import BBO, rew_softmax
 import realcomp 
+from realcomp.envs import realcomp_robot
 from PIL import Image
 import time, sys
 
 #-----------------------------------------------------------------------------
 target = "tomato"
-dmp_num_theta = 40
+target_yaw = {"tomato": 180, "orange": 0, "mustard":30}
+dmp_num_theta = 20
 dmp_stime = 200
 dmp_dt = 0.2
-dmp_sigma = 0.01
+dmp_sigma = 0.5
 
 
 bbo_softmax_temp = 0.1
 bbo_epochs = 1000
-bbo_episodes = 25
+bbo_episodes = 15
 bbo_num_dmps = 9
 bbo_sigma = 1e-100
-bbo_sigma_decay_amp = 0.6
+bbo_sigma_decay_amp = 1.6
 bbo_sigma_decay_period = 9999
 init_gap = 150
 
-dist_sigma = 0.01
+dist_sigma = 0.05
 finger_amp = 1.0
-dist_amp = 500.0
-table_amp = 0.0
+dist_amp = 1.0
+table_amp = 0.02
 
 def GraspRewardFunc(contact_dict, state):
     
@@ -52,10 +54,11 @@ def GraspRewardFunc(contact_dict, state):
     distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
     distance = np.exp(-(dist_sigma**-2)*distance**2)
     
-    return finger_amp*(finger_reward)*(1 + dist_amp*distance) - table_amp*table_reward
+    return finger_amp*fingers_reward**4 + dist_amp*fingers_reward*distance - table_amp*table_reward
 
 GraspRewardFunc.epoch = 0
-GraspRewardFunc.initial_obj_pose = [0.0, 0.0, 0.8]
+GraspRewardFunc.initial_obj_pose = realcomp_robot.Kuka.object_poses["tomato"][:3]
+GraspRewardFunc.initial_obj_pose[-1] += 0.3 
 
 #-----------------------------------------------------------------------------
 
@@ -163,14 +166,14 @@ if __name__ == "__main__":
             if(os.path.isfile(f)):
                 os.remove(f)
 
-    
-
     env = gym.make("REALComp-v0")
     env.reward_func = GraspRewardFunc
     env.robot.target = target
     env.robot.used_objects = ["table", target]
     env._render_width = 640
     env._render_height = 480
+    env._cam_yaw = target_yaw[target]
+    env.setCamera()
     #env.render("human")
     
     # the BBO object
