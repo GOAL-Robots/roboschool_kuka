@@ -12,6 +12,33 @@ from PIL import Image
 import time
 import argparse, sys
 
+class GraspRewardFunc:
+
+    epoch = 0
+    initial_obj_pose = realcomp_robot.Kuka.object_poses["tomato"][:3]
+    initial_obj_pose[-1] += 0.3 
+   
+    def __call__(self, contact_dict, state):
+
+        finger_reward = len([contact for part, contacts 
+            in contact_dict.items() for contact in contacts
+            if "skin" in part and target in contact])
+
+        fingers_reward = len(set([part for part,contacts in 
+            contact_dict.items() for contact in contacts
+            if "skin" in part and target in contact]))
+        
+        table_reward = len([contact for part, contacts
+            in contact_dict.items() for contact in contacts 
+            if "table" in contact])
+
+        obj_pose = state[-3:]
+
+        distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
+        distance = np.exp(-(dist_sigma**-2)*distance**2)
+        
+        return finger_amp*finger_reward + dist_amp*distance - table_amp*table_reward
+
 import pyglet, pyglet.window as pw, pyglet.window.key as pwk
 from pyglet import gl
 
@@ -81,6 +108,7 @@ if __name__ == "__main__":
     env._render_height = 480
     env._cam_yaw = 180
     env.robot.used_objects = ["table", "tomato", "mustard", "orange"]
+    env.robot.reward_func = GraspRewardFunc()
 
     p = PygletInteractiveWindow(env, 320, 240)
 
@@ -106,6 +134,11 @@ if __name__ == "__main__":
         
         # do the movement
         state, r, done, info_ = env.step(action)
+        
+        print("reward: %8.4f" % r)
+
+        if len(info_["contacts"]) > 0:
+            print(info_["contacts"])
        
         eye_rgb = env.eyes["eye0"].render(env.robot.parts["finger_01"].get_position())
         p.imshow(eye_rgb)
