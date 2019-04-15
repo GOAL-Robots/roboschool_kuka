@@ -16,49 +16,51 @@ import time, sys
 target = "tomato"
 target_yaw = {"tomato": 180, "orange": 0, "mustard":30}
 dmp_num_theta = 20
-dmp_stime = 200
+dmp_stime = 100
 dmp_dt = 0.2
-dmp_sigma = 0.5
+dmp_sigma = 0.3
 
-
-bbo_softmax_temp = 0.1
+bbo_softmax_temp = 0.05
 bbo_epochs = 1000
-bbo_episodes = 15
+bbo_episodes = 30
 bbo_num_dmps = 9
 bbo_sigma = 1e-100
-bbo_sigma_decay_amp = 1.6
+bbo_sigma_decay_amp = 0.2
 bbo_sigma_decay_period = 9999
-init_gap = 150
+init_gap = 50
 
-dist_sigma = 0.05
+dist_sigma = 0.5
 finger_amp = 1.0
 dist_amp = 1.0
-table_amp = 0.02
+table_amp = 0.0
 
-def GraspRewardFunc(contact_dict, state):
-    
-    finger_reward = len([contact for part, contacts 
-        in contact_dict.items() for contact in contacts
-        if "finger" in part and target in contact])
+class GraspRewardFunc:
 
-    fingers_reward = len(set([part for part,contacts in 
-        contact_dict.items() for contact in contacts
-        if "finger" in part and target in contact]))
-    
-    table_reward = len([contact for part, contacts
-        in contact_dict.items() for contact in contacts 
-        if "table" in contact])
+    epoch = 0
+    initial_obj_pose = realcomp_robot.Kuka.object_poses["tomato"][:3]
+    initial_obj_pose[-1] += 0.3 
+   
+    def __call__(self, contact_dict, state):
 
-    obj_pose = state[-3:]
+        finger_reward = len([contact for part, contacts 
+            in contact_dict.items() for contact in contacts
+            if "skin" in part and target in contact])
 
-    distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
-    distance = np.exp(-(dist_sigma**-2)*distance**2)
-    
-    return finger_amp*fingers_reward**4 + dist_amp*fingers_reward*distance - table_amp*table_reward
+        fingers_reward = len(set([part for part,contacts in 
+            contact_dict.items() for contact in contacts
+            if "skin" in part and target in contact]))
+        
+        table_reward = len([contact for part, contacts
+            in contact_dict.items() for contact in contacts 
+            if "table" in contact])
 
-GraspRewardFunc.epoch = 0
-GraspRewardFunc.initial_obj_pose = realcomp_robot.Kuka.object_poses["tomato"][:3]
-GraspRewardFunc.initial_obj_pose[-1] += 0.3 
+        obj_pose = state[-3:]
+
+        distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
+        distance = np.exp(-(dist_sigma**-2)*distance**2)
+        
+        return finger_amp*finger_reward + dist_amp*fingers_reward*distance - table_amp*table_reward
+
 
 #-----------------------------------------------------------------------------
 
@@ -167,7 +169,7 @@ if __name__ == "__main__":
                 os.remove(f)
 
     env = gym.make("REALComp-v0")
-    env.reward_func = GraspRewardFunc
+    env.reward_func = GraspRewardFunc()
     env.robot.target = target
     env.robot.used_objects = ["table", target]
     env._render_width = 640
@@ -242,5 +244,6 @@ if __name__ == "__main__":
             fig = plt.figure(figsize=(800/100, 600/100), dpi=100)
             ax = fig.add_subplot(111)
             ax.plot(rew)
+            ax.scatter(k,rew[k],color="red")
             fig.savefig("frames/rew.png",dpi=100)
         

@@ -49,29 +49,32 @@ class Simulation:
 if __name__ == "__main__":
     
     env = gym.make("REALComp-v0")
-    env.setCameraSize(640, 480)
+    env._render_width = 640
+    env._render_height = 480
+    env._cam_yaw = 180 
+    env.setCamera()
 
     env.reward_func = lambda x, y: 0
     env.robot.used_objects = ["table", "tomato", "mustard", "orange"]
     env.robot.object_poses["mustard"][2] = 1 
     env.render("human")
 
-    stime = 200
+    stime = 20000
     rollout = np.zeros([9, stime])
-    rollout[7, int(stime*1/8):] +=  np.pi*0.05
-    rollout[8, int(stime*1/8):] +=  np.pi*0.05
-    rollout[4, int(stime*2/8):] -=  np.pi*0.8
-    rollout[5, int(stime*3/8):] -=  np.pi*0.5
-    rollout[0, int(stime*4/8):] +=  np.pi*0.05
-    rollout[1, int(stime*5/8):] +=  np.pi*0.15
-    rollout[7, int(stime*6/8):] -=  np.pi*0.1
-    rollout[1, int(stime*7/8):] -=  np.pi*0.15
+    # rollout[7, int(stime*1/8):] +=  np.pi*0.05
+    # rollout[8, int(stime*1/8):] +=  np.pi*0.05
+    # rollout[4, int(stime*2/8):] -=  np.pi*0.8
+    # rollout[5, int(stime*3/8):] -=  np.pi*0.5
+    # rollout[0, int(stime*4/8):] +=  np.pi*0.05
+    # rollout[1, int(stime*5/8):] +=  np.pi*0.15
+    # rollout[7, int(stime*6/8):] -=  np.pi*0.1
+    # rollout[1, int(stime*7/8):] -=  np.pi*0.15
 
     sim = Simulation(rollout, env, plot=False)
 
 
     for t in range(len(rollout.T)): 
-        time.sleep(1/20)
+        time.sleep(1/200)
         sim()
 
     

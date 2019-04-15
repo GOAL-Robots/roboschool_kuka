@@ -12,54 +12,49 @@ from PIL import Image
 import time
 import argparse, sys
 
-class Simulation:
-    def __init__(self, rollout, env, plot=False, save=False, path="frames/lasts" ):
-        """
-        :param rollout: A single rollout (n_joints x timesteps) from which joint commands are taken
-        :param plot: if the simulation is rendered on a window
-        :param save: if the simulation frames are saved on file
-        :param path: path where jpegs are saved
-        """
-        self.t = 0
-        self.rollout = rollout  
-        self.plot = plot
-        self.path = path
-        self.save = save
-        self.env = env
-        self.env.reset()
+import pyglet, pyglet.window as pw, pyglet.window.key as pwk
+from pyglet import gl
 
-        if save:
-            np.savetxt(self.path+"/rollout",rollout)
-        
-    def __call__(self):    
+class PygletInteractiveWindow(pw.Window):
+    
+    def __init__(self, env, width, height):
 
-        # we control only few joints
-        ctrl_joints = self.rollout[:, self.t]
-        action = np.zeros(9)
-        
-        action[0]   =  np.pi*0.0 + ctrl_joints[0] 
-        action[1]   =  np.pi*0.2 + ctrl_joints[1] 
-        action[2]   =  np.pi*0.0 + ctrl_joints[2] 
-        action[3]   = -np.pi*0.2 + ctrl_joints[3] 
-        action[4:7] =  np.pi*0.0 + ctrl_joints[4:7] 
-        action[7:] = ctrl_joints[7:] 
-        
-        # do the movement
-        state, r, done, info_ = self.env.step(action)
-        if not self.save:  time.sleep(1/60)
+        pw.Window.__init__(self, width=width, height=height, vsync=False, resizable=True)
+        self.theta = 0
+        self.still_open = True
 
-        if self.plot:
-            self.env.render("human")
-        
-        if self.save:
-            rgb = self.env.render("rgb_array")
-            im = Image.fromarray(rgb)
-            im.save(self.path + "/frame_{:04d}.jpeg".format(self.t))
+        @self.event
+        def on_close():
+            self.still_open = False
 
-        self.t += 1  
-        return r
+        @self.event
+        def on_resize(width, height):
+            self.win_w = width
+            self.win_h = height
+
+        self.keys = {}
+        self.human_pause = False
+        self.human_done = False
+
+    def imshow(self, arr):
+
+        H, W, C = arr.shape
+        assert C==3
+        image = pyglet.image.ImageData(W, H, 'RGB', arr.tobytes(), pitch=W*-3)
+        self.clear()
+        self.switch_to()
+        self.dispatch_events()
+        texture = image.get_texture()
+        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
+        texture.width  = W
+        texture.height = H
+        texture.blit(0, 0, width=self.win_w, height=self.win_h)
+        self.flip()
+
+
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser() 
     parser.add_argument('-s','--save',
         help="Save frames",
@@ -75,25 +70,56 @@ if __name__ == "__main__":
         files = glob.glob('/frames/lasts/*')
         for f in files:
             os.remove(f)
-
+        path = "frames/lasts"
+    
 
     rollout = np.loadtxt("rollout")
     
     env = gym.make("REALComp-v0")
+    env.setEye("eye0")
     env._render_width = 640
     env._render_height = 480
     env._cam_yaw = 180
-
-    env.reward_func = lambda x, y: 0
     env.robot.used_objects = ["table", "tomato", "mustard", "orange"]
+
+    p = PygletInteractiveWindow(env, 320, 240)
+
     env.render("human")
+    env.reset()
 
-    def init_trj(ro, init=150):
-        return np.hstack(( np.zeros([ro.shape[0],init]), ro));
-    
+    def init_trj(ro, init=20):
+        return np.hstack(( np.zeros([ro.shape[0],init]), ro)); 
     rollout = init_trj(rollout)
-    sim = Simulation(rollout, env, plot=False, save=args.save)
 
-    for t in range(len(rollout.T)): sim()
+    for t in range(len(rollout.T)): 
+       
+        # we control only few joints
+        ctrl_joints = rollout[:, t]
+        action = np.zeros(9)
+        
+        action[0]   =  np.pi*0.0 + ctrl_joints[0] 
+        action[1]   =  np.pi*0.2 + ctrl_joints[1] 
+        action[2]   =  np.pi*0.0 + ctrl_joints[2] 
+        action[3]   = -np.pi*0.2 + ctrl_joints[3] 
+        action[4:7] =  np.pi*0.0 + ctrl_joints[4:7] 
+        action[7:] = ctrl_joints[7:] 
+        
+        # do the movement
+        state, r, done, info_ = env.step(action)
+       
+        eye_rgb = env.eyes["eye0"].render(env.robot.parts["finger_01"].get_position())
+        p.imshow(eye_rgb)
+        
+        if not args.save:  
+            time.sleep(1/200)
+        else:
+            rgb = env.render("rgb_array")
+            im = Image.fromarray(rgb)
+            im.save(path + "/frame_{:04d}.jpeg".format(t))
+            
+            im = Image.fromarray(eye_rgb)
+            im.save(path + "/eye_{:04d}.jpeg".format(t))
+            t += 1
+
 
     
