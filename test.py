@@ -13,6 +13,13 @@ import time
 import argparse, sys
 
 class GraspRewardFunc:
+    
+    
+    dist_sigma = 0.5
+    finger_amp = 100.0
+    dist_amp = 10.0
+    table_amp = 0.1
+
 
     epoch = 0
     initial_obj_pose = realcomp_robot.Kuka.object_poses["tomato"][:3]
