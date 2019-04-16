@@ -15,24 +15,24 @@ import time, sys
 #-----------------------------------------------------------------------------
 target = "tomato"
 target_yaw = {"tomato": 180, "orange": 0, "mustard":30}
-dmp_num_theta = 20
+dmp_num_theta = 10
 dmp_stime = 100
 dmp_dt = 0.2
-dmp_sigma = 0.3
+dmp_sigma = 0.2
 
-bbo_softmax_temp = 0.05
+bbo_softmax_temp = 0.01
 bbo_epochs = 1000
 bbo_episodes = 30
 bbo_num_dmps = 9
-bbo_sigma = 1e-100
-bbo_sigma_decay_amp = 0.2
-bbo_sigma_decay_period = 9999
+bbo_sigma = 1e-2
+bbo_sigma_decay_amp = 2.0
+bbo_sigma_decay_period = 0.2
 init_gap = 50
 
 dist_sigma = 0.5
 finger_amp = 1.0
-dist_amp = 1.0
-table_amp = 0.0
+dist_amp = 100.0
+table_amp = 0.1
 
 class GraspRewardFunc:
 
@@ -59,7 +59,7 @@ class GraspRewardFunc:
         distance = np.linalg.norm(obj_pose - GraspRewardFunc.initial_obj_pose)
         distance = np.exp(-(dist_sigma**-2)*distance**2)
         
-        return finger_amp*finger_reward + dist_amp*fingers_reward*distance - table_amp*table_reward
+        return finger_amp*finger_reward + dist_amp*finger_reward*distance - table_amp*table_reward
 
 
 #-----------------------------------------------------------------------------
@@ -172,10 +172,13 @@ if __name__ == "__main__":
     env.reward_func = GraspRewardFunc()
     env.robot.target = target
     env.robot.used_objects = ["table", target]
-    env._render_width = 640
-    env._render_height = 480
+    env._render_width = int(640/5)
+    env._render_height = int(480/5)
+    # env._render_width = 640
+    # env._render_height = 480
     env._cam_yaw = target_yaw[target]
     env.setCamera()
+    env.robot.contact_threshold = 0.008
     #env.render("human")
     
     # the BBO object
