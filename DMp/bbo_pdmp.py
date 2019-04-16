@@ -50,7 +50,6 @@ class BBO(object) :
         self.decay_amp = sigma_decay_amp
         self.decay_period = sigma_decay_period
         self.epoch = 0
-        self.err = 0.0
         
         # create dmps  
         self.dmps = []
@@ -63,16 +62,14 @@ class BBO(object) :
         self.softmax = softmax        
         # define the cost function 
         self.cost_func = cost_func
-
-        self.Sk = 0.0
-        
+ 
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
         """  
         
         Sigma = self.sigma + self.decay_amp*np.exp(
             -self.epoch/(self.epochs * self.decay_period))
-        Sigma *= np.exp(-np.max(self.Sk)/float(self.dmp_stime*4))
+        #Sigma *= np.exp(-np.max(self.Sk)/float(self.dmp_stime*4))
 
         # matrix of deviations from the parameters mean
         self.eps = np.random.multivariate_normal(
@@ -97,10 +94,10 @@ class BBO(object) :
         rollouts = []
                 
         rng = self.num_dmp_params + 1
-        for idx, dmp  in enumerate(self.dmps): 
+        for k, theta in enumerate(thetas):
+            thetak = theta.copy()
             dmp_rollouts = []
-            for k, theta in enumerate(thetas):
-                thetak = theta.copy()
+            for idx, dmp  in enumerate(self.dmps): 
                 dmp_theta = thetak[(idx*rng):((idx+1)*rng -1)] 
                 dmp[k].reset()
                 dmp[k].theta = dmp_theta
@@ -154,10 +151,10 @@ class BBO(object) :
         self.sample()
         rollouts = self.rollouts(self.theta + explore*self.eps) 
         costs = self.outcomes(rollouts)   
-        self.Sk = self.eval(costs)
-        self.update(self.Sk)
+        Sk = self.eval(costs)
+        self.update(Sk)
         self.epoch += 1
-        return rollouts, self.err
+        return rollouts, costs, Sk
     
 #------------------------------------------------------------------------------ 
 
