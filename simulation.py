@@ -24,9 +24,9 @@ bbo_softmax_temp = 0.05
 bbo_epochs = 1000
 bbo_episodes = 30
 bbo_num_dmps = 9
-bbo_sigma = 1e-100
-bbo_sigma_decay_amp = 0.2
-bbo_sigma_decay_period = 9999
+bbo_sigma = 1e-2
+bbo_sigma_decay_amp = 2.0
+bbo_sigma_decay_period = 0.2
 init_gap = 50
 
 dist_sigma = 0.5
@@ -119,34 +119,23 @@ class Objective:
     Given a simulation environment run  simulations with the 
     given joint trajectories at each call
     """
-    curr_rew = 0
-    best_rollout = None
 
     def __init__(self, env):
         self.env = env
 
     def __call__(self, rollouts):
 
-        n_joints, n_episodes, timesteps = rollouts.shape 
+        n_episodes, n_joints, timesteps = rollouts.shape 
 
         rews = np.zeros([n_episodes, timesteps])
-        rew_means = np.zeros(n_episodes)
+
         for episode in range(n_episodes):
             
             # simulate with the current joint trajectory to read rewards
-            simulate = Simulator(np.squeeze(rollouts[:,episode,:]), 
+            simulate = Simulator(np.squeeze(rollouts[episode,:,:]), 
                     self.env, plot=False)
             for t in range(timesteps):
-                rews[episode, t] = np.sum(simulate.step())
-            rew_means[episode] = np.mean(rews[episode]) 
-            
-            # we save the best rollout till now
-            if rew_means[episode] > Objective.curr_rew:
-               Objective.best_rollout = np.squeeze(rollouts[:,episode,:]).copy()
-            Objective.curr_rew = rew_means[episode];
-        
-        max_idx = np.argmax(rew_means)
-        Objective.epoch_rollout = np.squeeze(rollouts[:,max_idx,:]).copy()
+                rews[episode, t] = simulate.step()
 
         return rews.reshape(1, *rews.shape)
 
@@ -176,7 +165,6 @@ if __name__ == "__main__":
     env._render_height = 480
     env._cam_yaw = target_yaw[target]
     env.setCamera()
-    #env.render("human")
     
     # the BBO object
     bbo = BBO(num_params=dmp_num_theta, 
@@ -193,50 +181,42 @@ if __name__ == "__main__":
 
     # BBO learning iterations
     rew = np.zeros(bbo_epochs)
+    best_rollout = None
+    epoch_rollout = None
+    max_Sk = 0
+
     for k in range(bbo_epochs):
        
         # simulaton step
 
         start = time.time()
-        rollouts, rew[k] = bbo.iteration()
+        rollouts, rews, Sk  = bbo.iteration()
+        rew[k] = np.max(Sk)/bbo.dmp_stime
         end = time.time()
          
         # save and plot
-        print("{:#4d} {:6.2f} -- {}".format(k, rew[k], end - start))
+        print("{:#4d} {:10.4f} -- {}".format(k, rew[k], end - start))
+
+        # store bests
+        epoch_Sk = np.max(Sk)
+        epoch_Sk_idx = np.argmax(Sk)
+        epoch_rollout = rollouts[epoch_Sk_idx]
+        if max_Sk < epoch_Sk:
+            best_rollout = epoch_rollout
 
         if k%12 == 0 or k == bbo_epochs -1:
-            rollouts = np.array(rollouts)
-            rollout_0 = np.squeeze(rollouts[:,0,:])
         
-            # curr_rollout = rollout_0
-            # curr_rollout = init_trj(curr_rollout)
-            # # run the simulator on first episode of last iteration
-            # simulate = Simulator(curr_rollout, env,
-            #         path="frames/lasts", plot=SIM_PLOT, save=True)
-            # for t in range(curr_rollout.shape[1]): 
-            #     simulate.step()
         
             # run the simulator on best rollout
-            if Objective.best_rollout is not None:
-                curr_rollout = Objective.best_rollout
+            if best_rollout is not None:
+                curr_rollout = best_rollout
             else:
-                curr_rollout = rollout_0
+                curr_rollout = rollouts[0]
             curr_rollout = init_trj(curr_rollout)
             simulate = Simulator(curr_rollout, env, 
                     path="frames/bests",  plot=SIM_PLOT, save=True)
             for t in range(curr_rollout.shape[1]): 
                 simulate.step()
-        
-            # # run the simulator on epoch rollout
-            # if Objective.best_rollout is not None:
-            #     curr_rollout = Objective.epoch_rollout
-            # else:
-            #     curr_rollout = rollout_0
-            # curr_rollout = init_trj(curr_rollout)
-            # simulate = Simulator(curr_rollout, env, 
-            #         path="frames/epochs",  plot=SIM_PLOT, save=True)
-            # for t in range(curr_rollout.shape[1]): 
-            #     simulate.step()
         
             GraspRewardFunc.epoch = k/float(bbo_epochs)
         
