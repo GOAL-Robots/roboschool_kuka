@@ -43,9 +43,8 @@ if __name__ == "__main__":
         reward = sim.state[1]
         if(len(contacts.items())>0):
             print(contacts)
-        rews.append(rew)
+        print("reward %6.3f:"%reward)
 
-    print(np.mean(rew))
 
 
     
