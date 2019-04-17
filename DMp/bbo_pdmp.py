@@ -106,15 +106,15 @@ class BBO(object) :
                 rollout = dmp[k].S["y"]
                 dmp_rollouts.append(rollout)
             rollouts.append(np.vstack(dmp_rollouts))
+        rollouts = np.array(rollouts)
         return rollouts
     
     def outcomes(self, rollouts):
         """
         compute outcomes for a stack of rollouts
-        :param rollouts: list(array(num_rollouts, stime)) 
-                for each dmp a stack of k rollouts
+        :param rollouts: array(num_episodes,num_rollouts, stime) 
+                for each episode a stack of num_dmp rollouts
         """              
-        rollouts = np.array(rollouts)        
         errs = self.cost_func(rollouts)           
         return errs    
     
@@ -131,14 +131,13 @@ class BBO(object) :
         for k in range(self.num_rollouts):
             Sk[k] = 0
             # final costs
-            for err in errs:
-                Sk[k] += err[k,-1]
-                for j in range(self.num_dmp_params) :
-                    # cost-to-go integral
-                    Sk[k] += err[k, j:-1].sum() 
-            # regularization
-            thetak = self.theta + self.eps[k]
-            Sk[k] += 0.5 * np.mean(self.sigma) * (thetak).dot(thetak) 
+            Sk[k] += errs[k,-1]
+            for j in range(self.num_dmp_params) :
+                # cost-to-go integral
+                Sk[k] += errs[k, j:-1].sum() 
+            # # regularization
+            # thetak = self.theta + self.eps[k]
+            # Sk[k] += 0.5 * np.mean(self.sigma) * (thetak).dot(thetak) 
     
         return Sk
         
