@@ -102,7 +102,7 @@ class Simulator:
         """
         self.t = 0
         self.rollout = rollout  
-        self.plot = plot
+        self.plot = not save
         self.path = path
         self.save = save
         self.env = env
