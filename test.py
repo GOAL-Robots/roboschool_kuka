@@ -33,11 +33,9 @@ if __name__ == "__main__":
     env.render("human")
     env.reset()
 
-    def init_trj(ro, init=20):
-        return np.hstack(( np.zeros([ro.shape[0],init]), ro)); 
     rollout = init_trj(rollout)
 
-    sim = Simulator(rollout, env, save=True)
+    sim = Simulator(rollout, env, save=args.save)
     rews = []
     for t in range(len(rollout.T)): 
         sim.step()
