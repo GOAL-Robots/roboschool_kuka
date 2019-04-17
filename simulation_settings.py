@@ -125,7 +125,8 @@ class Simulator:
         action[7:] = ctrl_joints[7:]
         
         # do the movement
-        state, r, done, info_ = self.env.step(action)
+        self.state = elf.env.step(action)
+        state, r, done, info_ = self.state 
 
         if self.plot:
             time.sleep(1/60)
