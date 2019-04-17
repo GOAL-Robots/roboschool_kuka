@@ -125,7 +125,7 @@ class Simulator:
         action[7:] = ctrl_joints[7:]
         
         # do the movement
-        self.state = elf.env.step(action)
+        self.state = self.env.step(action)
         state, r, done, info_ = self.state 
 
         if self.plot:
