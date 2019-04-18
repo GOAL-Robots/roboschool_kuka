@@ -76,7 +76,6 @@ if __name__ == "__main__":
         if k%10 == 0 or k == bbo_epochs -1:
 
             if best_rollout is not None:
-                curr_rollout = best_rollout
                 curr_rollout = init_trj(best_rollout)
             
                 # simulate for video storage 
