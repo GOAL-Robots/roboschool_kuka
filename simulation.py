@@ -33,6 +33,7 @@ if __name__ == "__main__":
     env._render_width = 640
     env._render_height = 480
     env._cam_yaw = target_yaw[target]
+    env._cam_pitch = target_pitch[target]
     env.setCamera()
     
     # the BBO object
@@ -40,7 +41,8 @@ if __name__ == "__main__":
             dmp_stime=dmp_stime, dmp_dt=dmp_dt, dmp_sigma=dmp_sigma,
             num_rollouts=bbo_episodes, num_dmps=bbo_num_dmps,
             sigma=bbo_sigma, lmb=bbo_softmax_temp, epochs=bbo_epochs,
-            sigma_decay_amp=bbo_sigma_decay_amp, 
+            sigma_decay_amp=bbo_sigma_decay_amp,
+            sigma_decay_start=bbo_sigma_decay_start,
             sigma_decay_period=bbo_sigma_decay_period, 
             softmax=rew_softmax, cost_func=Objective(env))
     
@@ -76,13 +78,20 @@ if __name__ == "__main__":
         if k%10 == 0 or k == bbo_epochs -1:
 
             if best_rollout is not None:
-                curr_rollout = init_trj(best_rollout)
-            
                 # simulate for video storage 
+                
+                # best rollout
+                curr_rollout = init_trj(best_rollout)    
                 simulate = Simulator(curr_rollout, env, path="frames/bests", save=True)
                 for t in range(curr_rollout.shape[1]): 
                     simulate.step()
 
+                # last rollout
+                curr_rollout = init_trj(epoch_rollout)    
+                simulate = Simulator(curr_rollout, env, path="frames/lasts", save=True)
+                for t in range(curr_rollout.shape[1]): 
+                    simulate.step()
+                
                 # save the plot with reward history
                 fig = plt.figure(figsize=(800/100, 600/100), dpi=100)
                 ax = fig.add_subplot(111)

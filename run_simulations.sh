@@ -184,6 +184,7 @@ usage()
     OPTIONS:
     -r --run         Starts the simulation
     -k --close       Closes all processes
+    -l --last        Show last rollouts
     -h --help        Show this help menu 
 EOF
 }
@@ -191,11 +192,12 @@ EOF
 
 RUN=false
 CLOSE=false
+BESTS=true
 B3SERV=
 VGL=
 
 # getopt
-GOTEMP="$(getopt -o "rkbh" -l "run,close,b3serv,help"  -n '' -- "$@")"
+GOTEMP="$(getopt -o "rklh" -l "run,close,last,help"  -n '' -- "$@")"
 
 if [[ -z "$(echo -n $GOTEMP |sed -e"s/\-\-\(\s\+.*\|\s*\)$//")" ]]; then
     usage; exit;
@@ -211,6 +213,9 @@ do
             break ;;
         -r | --run)
             RUN=true
+            shift;;
+        -l | --last)
+            BESTS=false
             shift;;
         -h | --help)
             echo "on help"
@@ -268,6 +273,12 @@ if [[ ${RUN} == true ]]; then
 
     sleep 0.1
 
+    if [[ $BESTS == true ]]; then
+        frame_dir=bests
+    else
+        frame_dir=lasts
+    fi
+
     exec_on_window_no_log mkvideo "mkdir -p ${HOME}/tmp/simulations "
     exec_on_window_no_log mkvideo "cd ${HOME}/tmp/simulations"
     exec_on_window_no_log mkvideo "rm *gif *png"
@@ -294,7 +305,7 @@ if [[ ${RUN} == true ]]; then
         mv rews_tmp.png rews.png
         for d in \$dirs; do
             echo "make \${d}_b_tmp.gif ..."
-            convert -loop 0 -delay 2 \$(find \$d/frames/bests/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_b_tmp.gif;
+            convert -loop 0 -delay 2 \$(find \$d/frames/$frame_dir/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_b_tmp.gif;
             mv \${d}_b_tmp.gif \${d}_b.gif
         done
 

@@ -12,11 +12,14 @@ def rew_softmax(x, lmb):
     e = np.exp((x - np.max(x))/lmb)
     return e/sum(e)
 
+def invsigm(x, a, b , c):
+    return a * (1 - 1 / (1 + np.exp(-(x - c) / b)))
+
 class BBO(object) :
     "P^2BB: Policy Improvement through Black Vox Optimization"
     def __init__(self, num_params=10, bins_hparams=None, dmp_stime=100,
             dmp_dt=0.1, dmp_sigma=0.1, num_rollouts=20, num_dmps=1,
-            sigma=0.001, lmb=0.1, epochs=100, sigma_decay_amp=0,
+            sigma=0.001, lmb=0.1, epochs=100, sigma_decay_amp=1, sigma_decay_start=0,
             sigma_decay_period=0.1, softmax=None, cost_func=None):
         '''
         :param num_params: Integer. Number of parameters to optimize 
@@ -30,8 +33,8 @@ class BBO(object) :
         :param lmb: Float. Temperature of the evaluation softmax
         :param epochs: Integer. Number of iterations
         :param sigma_decay_amp: Initial additive amplitude of exploration
-        :param sigma_decay_period: Decaying period of additive 
-            amplitude of exploration
+        :param sigma_decay_start: i Time point of decay [0, 1]
+        :param sigma_decay_period: Decaying period of additive amplitude of exploration [0, 1]
         '''
         
         self.dmp_stime = dmp_stime
@@ -48,6 +51,7 @@ class BBO(object) :
         self.Cov = np.eye(self.num_params, self.num_params)
         self.epochs = epochs
         self.decay_amp = sigma_decay_amp
+        self.decay_start = sigma_decay_start
         self.decay_period = sigma_decay_period
         self.epoch = 0
         
@@ -66,10 +70,11 @@ class BBO(object) :
     def sample(self):
         """ Get num_rollouts samples from the current parameters mean
         """  
-        
-        Sigma = self.sigma + self.decay_amp*np.exp(
-            -self.epoch/(self.epochs * self.decay_period))
-        #Sigma *= np.exp(-np.max(self.Sk)/float(self.dmp_stime*4))
+        delta_sigma = invsigm(self.epoch, 
+                self.decay_amp,
+                self.epochs * self.decay_period,
+                self.decay_start) 
+        Sigma = self.sigma + delta_sigma
 
         # matrix of deviations from the parameters mean
         self.eps = np.random.multivariate_normal(

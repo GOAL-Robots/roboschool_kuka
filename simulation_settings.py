@@ -4,8 +4,9 @@ from realcomp.envs import realcomp_robot
 import numpy as np
 import time
 
-target = "tomato"
-target_yaw = {"tomato": 180, "orange": 0, "mustard":30}
+target = "orange"
+target_pitch = {"tomato": -30, "orange": -60, "mustard":-30}
+target_yaw = {"tomato": 180, "orange": 90, "mustard":0}
 
 
 dmp_num_theta = 20
@@ -14,20 +15,22 @@ dmp_dt = 0.2
 dmp_sigma = 0.4
 
 bbo_softmax_temp = 0.01
-bbo_epochs = 1000
+bbo_epochs = 300
 bbo_episodes = 30
 bbo_num_dmps = 9
-bbo_sigma = 0.05
-bbo_sigma_decay_amp = 1.0
-bbo_sigma_decay_period = 0.1
+bbo_sigma = 0.01
+bbo_sigma_decay_amp = 2.0
+bbo_sigma_decay_start = 0.5
+bbo_sigma_decay_period = 0.05
 init_gap = 50
 
-dist_sigma = 1.5
+dist_sigma = 1000.0
 finger_amp = 1.0
-dist_amp = 1.0
+dist_amp = .5
 table_amp = 0.0
 
 contact_threshold = 0.008
+target_pos = 0.5
 
 #-----------------------------------------------------------------------------
 
@@ -35,7 +38,7 @@ class GraspRewardFunc:
 
     epoch = 0
     initial_obj_pose = realcomp_robot.Kuka.object_poses["tomato"][:3]
-    initial_obj_pose[-1] += 0.3 
+    initial_obj_pose[-1] += 0.5 
    
     def __call__(self, contact_dict, state):
 

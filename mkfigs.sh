@@ -1,5 +1,6 @@
 #!/bin/bash
 N=$1
+DIR=${2:-bests}
 rm -r frames
 cp ~/tmp/simulations/sim$N/frames/bests/rollout .
 python test.py -s

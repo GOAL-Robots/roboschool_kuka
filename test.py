@@ -24,16 +24,17 @@ if __name__ == "__main__":
     rollout = np.loadtxt("rollout")
     
     env = gym.make("REALComp-v0")
+    env.reward_func = GraspRewardFunc()
+    env.robot.target = target
+    env.robot.used_objects = ["table", "tomato", "mustard", "orange"]
+    env.robot.contact_threshold = contact_threshold
     env._render_width = 640
     env._render_height = 480
-    env._cam_yaw = 180
-    env.robot.used_objects = ["table", "tomato", "mustard", "orange"]
-    env.reward_func = GraspRewardFunc()
-    env.robot.contact_threshold = contact_threshold
+    env._cam_pitch = target_pitch[target]
+    env._cam_yaw = target_yaw[target]
+    env.setCamera()
     env.render("human")
-    env.reset()
 
-    rollout = init_trj(rollout)
 
     sim = Simulator(rollout, env, plot=not args.save, save=args.save)
     rews = []
