@@ -66,17 +66,14 @@ if __name__ == "__main__":
         # store epoch
         epoch_Sk = np.max(Sk) 
         epoch_Sk_idx = np.argmax(Sk)
-        epoch_rollout = rollouts[epoch_Sk_idx].copy()
+        epoch_rollout = rollouts[epoch_Sk_idx]
 
         # store bests
-        prev_max = max_Sk
         if max_Sk < epoch_Sk:
-            best_rollout = epoch_rollout.copy()
-            max_Sks = Sk.copy()
+            best_rollout = epoch_rollout
             max_Sk = epoch_Sk
-            max_rews = rews.copy()
 
-        if k%1 == 0 or k == bbo_epochs -1:
+        if k%10 == 0 or k == bbo_epochs -1:
 
             if best_rollout is not None:
                 curr_rollout = best_rollout

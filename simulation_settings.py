@@ -17,8 +17,8 @@ bbo_softmax_temp = 0.01
 bbo_epochs = 1000
 bbo_episodes = 30
 bbo_num_dmps = 9
-bbo_sigma = 0.2
-bbo_sigma_decay_amp = 0.5
+bbo_sigma = 0.05
+bbo_sigma_decay_amp = 1.0
 bbo_sigma_decay_period = 0.1
 init_gap = 50
 
@@ -102,7 +102,7 @@ class Simulator:
         """
         self.t = 0
         self.rollout = rollout  
-        self.plot = not save
+        self.plot = plot
         self.path = path
         self.save = save
         self.env = env
@@ -128,10 +128,10 @@ class Simulator:
         self.state = self.env.step(action)
         state, r, done, info_ = self.state 
 
-        if self.plot:
+        if self.plot == True:
             time.sleep(1/60)
         
-        if self.save:
+        if self.save == True:
             rgb = self.env.render("rgb_array")
             im = Image.fromarray(rgb) 
             im.save(self.path + "/frame_{:04d}.jpeg".format(self.t))

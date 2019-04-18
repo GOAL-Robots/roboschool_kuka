@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     rollout = init_trj(rollout)
 
-    sim = Simulator(rollout, env, save=args.save)
+    sim = Simulator(rollout, env, plot=not args.save, save=args.save)
     rews = []
     for t in range(len(rollout.T)): 
         sim.step()
