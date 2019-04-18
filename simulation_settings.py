@@ -4,7 +4,7 @@ from realcomp.envs import realcomp_robot
 import numpy as np
 import time
 
-target = "orange"
+target = "mustard"
 target_pitch = {"tomato": -30, "orange": -60, "mustard":-30}
 target_yaw = {"tomato": 180, "orange": 90, "mustard":0}
 

@@ -305,7 +305,7 @@ if [[ ${RUN} == true ]]; then
         mv rews_tmp.png rews.png
         for d in \$dirs; do
             echo "make \${d}_b_tmp.gif ..."
-            convert -loop 0 -delay 2 \$(find \$d/frames/$frame_dir/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_b_tmp.gif;
+            convert -loop 0 -delay 2 \$(find \$d/frames/'$frame_dir'/ | grep jpeg| sort -n | awk "NR%2==0") \${d}_b_tmp.gif;
             mv \${d}_b_tmp.gif \${d}_b.gif
         done
 
