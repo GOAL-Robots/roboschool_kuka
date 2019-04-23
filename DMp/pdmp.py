@@ -184,6 +184,12 @@ class DMP(object) :
             self.S["x"][t] = self.x
             self.S["phi"][t,:] = phi
 
+    def interpolate(self, rtime):
+
+        f = interpolate.interp1d(self.S["x"], self.S["y"])
+        x = np.linspace(0,1,rtime)
+        return x, f(x)
+
 if __name__ == "__main__" :
 
    

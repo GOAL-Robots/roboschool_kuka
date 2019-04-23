@@ -73,8 +73,9 @@ class BBO(object) :
         delta_sigma = invsigm(self.epoch, 
                 self.decay_amp,
                 self.epochs * self.decay_period,
-                self.decay_start) 
+                self.epochs * self.decay_start) 
         Sigma = self.sigma + delta_sigma
+        print()
 
         # matrix of deviations from the parameters mean
         self.eps = np.random.multivariate_normal(
@@ -131,13 +132,13 @@ class BBO(object) :
         """   
         self.err = np.mean(np.mean(errs, 1)) # store the mean square error
 
-        # comute costs
+        # compute costs
         Sk = np.zeros(self.num_rollouts)
         for k in range(self.num_rollouts):
             Sk[k] = 0
             # final costs
             Sk[k] += errs[k,-1]
-            for j in range(self.num_dmp_params) :
+            for j in range(len(errs[k])) :
                 # cost-to-go integral
                 Sk[k] += errs[k, j:-1].sum() 
             # # regularization
