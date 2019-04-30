@@ -42,8 +42,8 @@ if __name__ == "__main__":
         sim.step()
         contacts = sim.state[3]["contacts"]
         reward = sim.state[1]
-        if(len(contacts.items())>0):
-            print(contacts)
+        # if(len(contacts.items())>0):
+        #     print(contacts)
         print("reward %6.3f:"%reward)
 
 

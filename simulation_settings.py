@@ -4,29 +4,29 @@ from realcomp.envs import realcomp_robot
 import numpy as np
 import time
 
-target = "orange"
+target = "mustard"
 target_pitch = {"tomato": -30, "orange": -60, "mustard":-30}
 target_yaw = {"tomato": 180, "orange": 90, "mustard":0}
 
 
-dmp_num_theta = 20
+dmp_num_theta = 5
 dmp_stime = 100
 dmp_dt = 0.2
-dmp_sigma = 0.4
+dmp_sigma = 0.5
 
 bbo_softmax_temp = 0.01
-bbo_epochs = 400
+bbo_epochs = 2000
 bbo_episodes = 30
 bbo_num_dmps = 9
 bbo_sigma = 0.01
 bbo_sigma_decay_amp = 2.0
-bbo_sigma_decay_start = 0.6
+bbo_sigma_decay_start = 1.6
 bbo_sigma_decay_period = 0.1
 init_gap = 50
 
-dist_sigma = .2
+dist_sigma = .6
 finger_amp = 1.0
-dist_amp = 1000.0
+dist_amp = 1.0
 table_amp = 0.0
 
 contact_threshold = 0.008
